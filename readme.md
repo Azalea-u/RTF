@@ -1,4 +1,4 @@
-***File hiarchy in the repo
+** File structure **
 ```bash
 /forum-app
 │
