@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 )
 
 type Handler struct {
@@ -19,26 +20,22 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-
 	hashedPassword, err := utils.HashPassword(user.Password)
 	if err != nil {
 		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
 		return
 	}
-
 	query := `INSERT INTO users (username, email, password, first_name, last_name, gender) VALUES (?, ?, ?, ?, ?, ?)`
 	result, err := h.db.DB.Exec(query, user.Username, user.Email, hashedPassword, user.FirstName, user.LastName, user.Gender)
 	if err != nil {
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
-
 	userID, err := result.LastInsertId()
 	if err != nil {
 		http.Error(w, "Failed to retrieve user ID", http.StatusInternalServerError)
 		return
 	}
-
 	user.ID = int(userID)
 	user.Password = ""
 	w.WriteHeader(http.StatusCreated)
@@ -54,7 +51,6 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-
 	var user db.User
 	query := `SELECT id, username, password FROM users WHERE username = ?`
 	row := h.db.DB.QueryRow(query, credentials.Username)
@@ -66,20 +62,25 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	if !utils.CheckPasswordHash(credentials.Password, user.Password) {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
-
-	token, err := utils.GenerateJWT(user.ID)
+	sessionToken, err := utils.GenerateSessionToken()
 	if err != nil {
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		http.Error(w, "Failed to generate session token", http.StatusInternalServerError)
 		return
 	}
-
+	cookie := &http.Cookie{
+		Name:     "session_token",
+		Value:    sessionToken,
+		Path:     "/",
+		HttpOnly: true,
+		Expires:  time.Now().Add(24 * time.Hour),
+	}
+	http.SetCookie(w, cookie)
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+	json.NewEncoder(w).Encode(map[string]string{"message": "login successful"})
 }
 
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -88,20 +89,17 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-
 	query := `INSERT INTO posts (user_id, title, content, category) VALUES (?, ?, ?, ?)`
 	result, err := h.db.DB.Exec(query, post.UserID, post.Title, post.Content, post.Category)
 	if err != nil {
 		http.Error(w, "Failed to create post", http.StatusInternalServerError)
 		return
 	}
-
 	postID, err := result.LastInsertId()
 	if err != nil {
 		http.Error(w, "Failed to retrieve post ID", http.StatusInternalServerError)
 		return
 	}
-
 	post.ID = int(postID)
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(post)
