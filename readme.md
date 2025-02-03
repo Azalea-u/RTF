@@ -1,4 +1,4 @@
-##File hiarchy in the repo
+File hiarchy in the repo
 ```bash
 /forum-app
 │
