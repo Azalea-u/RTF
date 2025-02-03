@@ -43,44 +43,68 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
-	var credentials struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-	var user db.User
-	query := `SELECT id, username, password FROM users WHERE username = ?`
-	row := h.db.DB.QueryRow(query, credentials.Username)
-	if err := row.Scan(&user.ID, &user.Username, &user.Password); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "User not found", http.StatusNotFound)
-		} else {
-			http.Error(w, "Failed to fetch user", http.StatusInternalServerError)
-		}
-		return
-	}
-	if !utils.CheckPasswordHash(credentials.Password, user.Password) {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return
-	}
-	sessionToken, err := utils.GenerateSessionToken()
-	if err != nil {
-		http.Error(w, "Failed to generate session token", http.StatusInternalServerError)
-		return
-	}
-	cookie := &http.Cookie{
-		Name:     "session_token",
-		Value:    sessionToken,
-		Path:     "/",
-		HttpOnly: true,
-		Expires:  time.Now().Add(24 * time.Hour),
-	}
-	http.SetCookie(w, cookie)
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "login successful"})
+    var credentials struct {
+        Username string `json:"username"`
+        Password string `json:"password"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
+        return
+    }
+
+    // Fetch user from the database
+    var user db.User
+    query := `SELECT id, username, password FROM users WHERE username = ?`
+    row := h.db.DB.QueryRow(query, credentials.Username)
+    if err := row.Scan(&user.ID, &user.Username, &user.Password); err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            http.Error(w, "User not found", http.StatusNotFound)
+        } else {
+            http.Error(w, "Failed to fetch user", http.StatusInternalServerError)
+        }
+        return
+    }
+
+    // Verify password
+    if !utils.CheckPasswordHash(credentials.Password, user.Password) {
+        http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+        return
+    }
+
+    // Generate a new session token
+    sessionToken, err := utils.GenerateSessionToken()
+    if err != nil {
+        http.Error(w, "Failed to generate session token", http.StatusInternalServerError)
+        return
+    }
+
+    // Store the session token in the online_status table
+    upsertQuery := `
+        INSERT INTO online_status (user_id, token, online, last_seen)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) DO UPDATE SET
+            token = excluded.token,
+            online = excluded.online,
+            last_seen = excluded.last_seen;
+    `
+    _, err = h.db.DB.Exec(upsertQuery, user.ID, sessionToken, true)
+    if err != nil {
+        http.Error(w, "Failed to update online status", http.StatusInternalServerError)
+        return
+    }
+
+    // Set the session token as an HttpOnly cookie
+    cookie := &http.Cookie{
+        Name:     "session_token",
+        Value:    sessionToken,
+        Path:     "/",
+        HttpOnly: true,
+        Expires:  time.Now().Add(24 * time.Hour),
+    }
+    http.SetCookie(w, cookie)
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "login successful"})
 }
 
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
