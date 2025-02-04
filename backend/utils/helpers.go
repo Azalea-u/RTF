@@ -1,31 +1,35 @@
 package utils
 
 import (
-	"app/backend/db"
-	"crypto/rand"
-	"encoding/base64"
+	"errors"
 	"net/http"
 
+	"app/backend/db"
+	"github.com/gofrs/uuid/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
+// HashPassword hashes a plain-text password.
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(bytes), err
 }
 
+// CheckPasswordHash compares a plain-text password with its hash.
 func CheckPasswordHash(password, hash string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
+// GenerateSessionToken creates a new session token using github.com/gofrs/uuid/v5.
 func GenerateSessionToken() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
+	token, err := uuid.NewV4()
+	if err != nil {
 		return "", err
 	}
-	return base64.URLEncoding.EncodeToString(b), nil
+	return token.String(), nil
 }
 
+// GetCookie retrieves the value of the specified cookie.
 func GetCookie(r *http.Request, name string) (string, error) {
 	cookie, err := r.Cookie(name)
 	if err != nil {
@@ -34,17 +38,17 @@ func GetCookie(r *http.Request, name string) (string, error) {
 	return cookie.Value, nil
 }
 
-func CheckSessionToken(r *http.Request, db *db.Database) (bool, error) {
+// CheckSessionToken validates that the session token from the cookie exists in the online_status table.
+func CheckSessionToken(r *http.Request, database *db.Database) (bool, error) {
 	token, err := GetCookie(r, "session_token")
 	if err != nil {
 		return false, err
 	}
-	// compare token with database
-	query := `SELECT id FROM online_status WHERE session_token = ?`
-	row := db.DB.QueryRow(query, token)
+	query := `SELECT id FROM online_status WHERE token = ?`
+	row := database.DB.QueryRow(query, token)
 	var id int
 	if err := row.Scan(&id); err != nil {
-		return false, err
+		return false, errors.New("invalid session token")
 	}
 	return true, nil
 }

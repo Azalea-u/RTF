@@ -6,18 +6,23 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const schemaFilePath = "./db/schema.sql"
+type Config struct {
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+}
 
 type Database struct {
 	DB *sql.DB
 }
 
-func NewDatabase(dbPath string) (*Database, error) {
+func NewDatabase(dbPath, schemaPath string, cfg Config) (*Database, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -30,10 +35,11 @@ func NewDatabase(dbPath string) (*Database, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(cfg.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
-	if err := initSchema(db); err != nil {
+	if err := initSchema(db, schemaPath); err != nil {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -41,14 +47,21 @@ func NewDatabase(dbPath string) (*Database, error) {
 	return &Database{DB: db}, nil
 }
 
-func initSchema(db *sql.DB) error {
-	sqlBytes, err := os.ReadFile(schemaFilePath)
+func initSchema(db *sql.DB, schemaPath string) error {
+	sqlBytes, err := os.ReadFile(schemaPath)
 	if err != nil {
-		return fmt.Errorf("failed to read schema file (%s): %w", schemaFilePath, err)
+		return fmt.Errorf("failed to read schema file (%s): %w", schemaPath, err)
 	}
 
-	if _, err := db.Exec(string(sqlBytes)); err != nil {
-		return fmt.Errorf("failed to execute schema SQL: %w", err)
+	statements := strings.Split(string(sqlBytes), ";")
+	for _, stmt := range statements {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+		if _, err := db.Exec(stmt); err != nil {
+			return fmt.Errorf("failed to execute SQL statement: %q: %w", stmt, err)
+		}
 	}
 
 	return nil

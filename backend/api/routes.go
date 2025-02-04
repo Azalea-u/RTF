@@ -6,16 +6,18 @@ import (
 )
 
 func NewRouter(db *db.Database) *http.ServeMux {
-	mux := http.NewServeMux()
+	r := http.NewServeMux()
+	h := &Handler{db: db}
+	m := &Middleware{db: db}
 
-	mux.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
-		(&Handler{db}).RegisterUser(w, r)
-	})
-	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		(&Handler{db}).LoginUser(w, r)
-	})
-	mux.HandleFunc("/posts", func(w http.ResponseWriter, r *http.Request) {
-		(&Handler{db}).CreatePost(w, r)
-	})
-	return mux
+	// API endpoints with logging, CORS, and authentication where needed.
+	r.Handle("/api/register", m.LoggingMiddleware(m.CORSMiddleware(http.HandlerFunc(h.RegisterUser))))
+	r.Handle("/api/login", m.LoggingMiddleware(m.CORSMiddleware(http.HandlerFunc(h.LoginUser))))
+	r.Handle("/api/posts", m.LoggingMiddleware(m.CORSMiddleware(m.AuthMiddleware(http.HandlerFunc(h.CreatePost)))))
+
+	// Static files
+	fs := http.FileServer(http.Dir("../../frontend"))
+	r.Handle("/", m.LoggingMiddleware(m.CORSMiddleware(fs)))
+
+	return r
 }

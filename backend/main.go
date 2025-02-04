@@ -16,7 +16,11 @@ import (
 )
 
 func main() {
-	db, err := db.NewDatabase("./db/forum.db")
+	db, err := db.NewDatabase("./db/forum.db", "./db/schema.sql", db.Config{
+		MaxOpenConns:    10, // max number of open connections to the database
+		MaxIdleConns:    5,  // max number of idle connections in the connection pool
+		ConnMaxLifetime: 10 * time.Minute, // maximum amount of time a connection can be reused
+	})
 	if err != nil {
 		log.Fatal(err)
 
