@@ -18,7 +18,7 @@ func (m *Middleware) LoggingMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		log.Printf("Started %s %s", r.Method, r.URL.Path)
 		next.ServeHTTP(w, r)
-		log.Printf("Completed %s in %v", r.URL.Path, time.Since(start))
+		log.Printf("Completed %s in %v \n", r.URL.Path, time.Since(start))
 	})
 }
 

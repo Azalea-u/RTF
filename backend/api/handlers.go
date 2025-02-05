@@ -107,6 +107,34 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "login successful"})
 }
 
+func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
+	// remove the session token from the database
+	token, err := utils.GetCookie(r, "session_token")
+	if err != nil {
+		http.Error(w, "Unauthorized: Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	query := `UPDATE online_status SET online = FALSE WHERE token = ?`
+	_, err = h.db.DB.Exec(query, token)
+	if err != nil {
+		http.Error(w, "Failed to update online status", http.StatusInternalServerError)
+		return
+	}
+
+	cookie := &http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+	}
+	http.SetCookie(w, cookie)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "logout successful"})
+}
+
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getUserIDFromSession(r)
 	if err != nil {
