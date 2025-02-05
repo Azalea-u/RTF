@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 )
@@ -73,7 +74,6 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate a new session token using github.com/gofrs/uuid/v5.
 	sessionToken, err := utils.GenerateSessionToken()
 	if err != nil {
 		http.Error(w, "Failed to generate session token", http.StatusInternalServerError)
@@ -91,24 +91,25 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	_, err = h.db.DB.Exec(upsertQuery, user.ID, sessionToken, true)
 	if err != nil {
 		http.Error(w, "Failed to update online status", http.StatusInternalServerError)
+		log.Printf("Failed to update online status for user %d: %v", user.ID, err)
 		return
 	}
 
-	cookie := &http.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    sessionToken,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Expires:  time.Now().Add(24 * time.Hour),
-	}
-	http.SetCookie(w, cookie)
+	})
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "login successful"})
 }
 
 func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	// remove the session token from the database
 	token, err := utils.GetCookie(r, "session_token")
 	if err != nil {
 		http.Error(w, "Unauthorized: Invalid session", http.StatusUnauthorized)
@@ -122,14 +123,13 @@ func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie := &http.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
 		Expires:  time.Unix(0, 0),
-	}
-	http.SetCookie(w, cookie)
+	})
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "logout successful"})
@@ -169,15 +169,9 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetPosts(w http.ResponseWriter, r *http.Request) {
-	userID, err := h.getUserIDFromSession(r)
-	if err != nil {
-		http.Error(w, "Unauthorized: Invalid session", http.StatusUnauthorized)
-		return
-	}
-
 	var posts []db.Post
-	query := `SELECT id, user_id, title, content, category FROM posts WHERE user_id = ?`
-	rows, err := h.db.DB.Query(query, userID)
+	query := `SELECT id, user_id, title, content, category FROM posts ORDER BY created_at DESC`
+	rows, err := h.db.DB.Query(query)
 	if err != nil {
 		http.Error(w, "Failed to fetch posts", http.StatusInternalServerError)
 		return
@@ -219,4 +213,27 @@ func (h *Handler) getUserIDFromSession(r *http.Request) (int, error) {
 	}
 
 	return userID, nil
+}
+
+// Handler function for retrieving the current user data
+func (h *Handler) GetUserData(w http.ResponseWriter, r *http.Request) {
+	userID, err := h.getUserIDFromSession(r)
+	if err != nil {
+		http.Error(w, "Unauthorized: Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	var user db.User
+	query := `SELECT id, username, email, first_name, last_name, gender FROM users WHERE id = ?`
+	row := h.db.DB.QueryRow(query, userID)
+	if err := row.Scan(&user.ID, &user.Username, &user.Email, &user.FirstName, &user.LastName, &user.Gender); err != nil {
+		http.Error(w, "Failed to fetch user data", http.StatusInternalServerError)
+		return
+	}
+
+	// Exclude password for security
+	user.Password = ""
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
 }

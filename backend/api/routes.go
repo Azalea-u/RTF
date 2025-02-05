@@ -16,6 +16,7 @@ func NewRouter(db *db.Database) *http.ServeMux {
 	r.Handle("/api/logout", m.LoggingMiddleware(m.CORSMiddleware(m.AuthMiddleware(http.HandlerFunc(h.LogoutUser)))))
 	r.Handle("/api/create-post", m.LoggingMiddleware(m.CORSMiddleware(m.AuthMiddleware(http.HandlerFunc(h.CreatePost)))))
 	r.Handle("/api/posts", m.LoggingMiddleware(m.CORSMiddleware(m.AuthMiddleware(http.HandlerFunc(h.GetPosts)))))
+	r.Handle("/api/user", m.LoggingMiddleware(m.CORSMiddleware(m.AuthMiddleware(http.HandlerFunc(h.GetUserData)))))
 
 	// Static files
 	fs := http.FileServer(http.Dir("../frontend"))

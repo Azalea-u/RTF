@@ -88,6 +88,11 @@ async function loadForumPage(user) {
         <form id="post-form">
             <input type="text" id="post-title" placeholder="Title" required>
             <textarea id="post-content" placeholder="Write something..." required></textarea>
+            <div id="category">
+                <label><input type="radio" name="category" value="general" required>General</label>
+                <label><input type="radio" name="category" value="tech">Tech</label>
+                <label><input type="radio" name="category" value="lifestyle">Lifestyle</label>
+            </div>
             <button type="submit">Post</button>
         </form>
     `;
