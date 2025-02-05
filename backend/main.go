@@ -40,7 +40,7 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		log.Printf("\nServer running on http://localhost:%s", port)
+		log.Printf("Server running on http://localhost:%s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("ERROR: Server failed - %v", err)
 		}

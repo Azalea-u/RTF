@@ -39,16 +39,16 @@ func GetCookie(r *http.Request, name string) (string, error) {
 }
 
 // CheckSessionToken validates that the session token from the cookie exists in the online_status table.
-func CheckSessionToken(r *http.Request, database *db.Database) (bool, error) {
+func CheckSessionToken(r *http.Request, database *db.Database) error {
 	token, err := GetCookie(r, "session_token")
 	if err != nil {
-		return false, err
+		return err
 	}
 	query := `SELECT id FROM online_status WHERE token = ?`
 	row := database.DB.QueryRow(query, token)
 	var id int
 	if err := row.Scan(&id); err != nil {
-		return false, errors.New("invalid session token")
+		return errors.New("invalid session token")
 	}
-	return true, nil
+	return  nil
 }
