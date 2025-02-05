@@ -140,6 +140,40 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(post)
 }
 
+func (h *Handler) GetPosts(w http.ResponseWriter, r *http.Request) {
+	userID, err := h.getUserIDFromSession(r)
+	if err != nil {
+		http.Error(w, "Unauthorized: Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	var posts []db.Post
+	query := `SELECT id, user_id, title, content, category FROM posts WHERE user_id = ?`
+	rows, err := h.db.DB.Query(query, userID)
+	if err != nil {
+		http.Error(w, "Failed to fetch posts", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var post db.Post
+		if err := rows.Scan(&post.ID, &post.UserID, &post.Title, &post.Content, &post.Category); err != nil {
+			http.Error(w, "Failed to scan post", http.StatusInternalServerError)
+			return
+		}
+		posts = append(posts, post)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Failed to iterate over posts", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(posts)
+}
+
 func (h *Handler) getUserIDFromSession(r *http.Request) (int, error) {
 	token, err := utils.GetCookie(r, "session_token")
 	if err != nil {
