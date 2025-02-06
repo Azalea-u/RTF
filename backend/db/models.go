@@ -1,22 +1,20 @@
 package db
 
-import (
-	"time"
-)
+import "time"
 
-// User represents the users table in the database.
+// User represents a user in the database.
 type User struct {
 	ID        int       `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
-	Password  string    `json:"password"`
+	Password  string    `json:"-"`
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
 	Gender    string    `json:"gender"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Post represents the posts table in the database.
+// Post represents a post created by a user.
 type Post struct {
 	ID        int       `json:"id"`
 	UserID    int       `json:"user_id"`
@@ -26,7 +24,7 @@ type Post struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Comment represents the comments table in the database.
+// Comment represents a comment on a post.
 type Comment struct {
 	ID        int       `json:"id"`
 	PostID    int       `json:"post_id"`
@@ -35,17 +33,17 @@ type Comment struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Like represents the likes table in the database.
+// Like represents a like on a post or a comment.
 type Like struct {
 	ID        int       `json:"id"`
-	PostID    *int      `json:"post_id"`
-	CommentID *int      `json:"comment_id"`
+	PostID    *int      `json:"post_id,omitempty"`
+	CommentID *int      `json:"comment_id,omitempty"`
 	UserID    int       `json:"user_id"`
 	Value     int       `json:"value"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Conversation represents the conversations table in the database.
+// Conversation represents a private conversation between two users.
 type Conversation struct {
 	ID        int       `json:"id"`
 	User1ID   int       `json:"user1_id"`
@@ -53,7 +51,7 @@ type Conversation struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Message represents the messages table in the database.
+// Message represents a message exchanged in a conversation.
 type Message struct {
 	ID             int       `json:"id"`
 	ConversationID int       `json:"conversation_id"`
@@ -63,11 +61,10 @@ type Message struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
-// OnlineStatus represents the online_status table in the database.
+// OnlineStatus represents the online status of a user.
 type OnlineStatus struct {
 	ID        int       `json:"id"`
 	UserID    int       `json:"user_id"`
 	Online    bool      `json:"online"`
 	LastSeen  time.Time `json:"last_seen"`
-	CreatedAt time.Time `json:"created_at"`
 }
