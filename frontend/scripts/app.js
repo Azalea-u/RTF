@@ -121,6 +121,7 @@ async function loadDashboardPage(user) {
     }
   });
 
+  // Load posts
   await loadPosts();
   setTimeout(() => loadMessagingSidebar(user), 0);  // Ensures the sidebar loads after the DOM update
 }

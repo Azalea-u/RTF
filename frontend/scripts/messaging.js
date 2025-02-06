@@ -1,4 +1,3 @@
-// messaging.js
 let socket;
 let currentUser = null;
 let currentConversationUserID = null;
@@ -43,7 +42,7 @@ async function loadUserList() {
 }
 
 async function loadConversation(otherUserID) {
-  const res = await fetch("/api/messages?user_id=" + otherUserID);
+  const res = await fetch(`/api/messages?receiver_id=${otherUserID}`); // Adjusted endpoint
   if (!res.ok) return;
   const messages = await res.json();
   const chatMessagesDiv = document.getElementById("chat-messages");
@@ -97,9 +96,25 @@ function attachFormListener() {
       content,
       sender_id: currentUser.id
     };
+    
+    // Send message to the backend via WebSocket (for real-time update)
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(message));
+      socket.send(JSON.stringify(message)); // Send to WebSocket
     }
-    input.value = "";
+
+    // Also send the message to the server (POST request)
+    const res = await fetch("/api/messages/send", { // Adjusted POST endpoint
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(message)
+    });
+
+    if (res.ok) {
+      input.value = ""; // Clear the input field
+    } else {
+      console.error("Failed to send message.");
+    }
   };
 }
