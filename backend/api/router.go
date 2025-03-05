@@ -16,7 +16,7 @@ func NewRouter(db *database.Database , wsHub *Hub) *http.ServeMux {
 
 	r.Handle("/api/register", wrap(http.HandlerFunc(h.RegisterUser)))
 	r.Handle("/api/login", wrap(http.HandlerFunc(h.LoginUser)))
-	r.Handle("/api/logout", wrap(http.HandlerFunc(h.LogoutUser)))
+	r.Handle("/api/logout", wrap(mw.AuthMiddleware(http.HandlerFunc(h.LogoutUser))))
 
 	r.Handle("/", http.FileServer(http.Dir("../frontend")))
 	return r
