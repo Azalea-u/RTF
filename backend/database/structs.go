@@ -1,9 +1,13 @@
 package database
 
-import "time"
+import (
+	"time"
+
+	"github.com/gofrs/uuid/v5"
+)
 
 type User struct {
-	ID        int       `db:"id"`
+	ID        uuid.UUID `db:"id"`
 	Username  string    `db:"username"`
 	Email     string    `db:"email"`
 	Password  string    `db:"password"`
@@ -13,7 +17,6 @@ type User struct {
 	Token     []byte    `db:"token"`
 	Gender    string    `db:"gender"`
 	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
 }
 
 type Post struct {
@@ -23,7 +26,6 @@ type Post struct {
 	Category  string    `db:"category"`
 	UserID    int       `db:"user_id"`
 	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
 }
 
 type Comment struct {
@@ -32,7 +34,6 @@ type Comment struct {
 	UserID    int       `db:"user_id"`
 	PostID    int       `db:"post_id"`
 	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
 }
 
 type Message struct {

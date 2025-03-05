@@ -111,3 +111,12 @@ func (h *Hub) Shutdown() {
 	}
 	log.Println("WebSocket hub shutdown completed.")
 }
+
+func (h *Hub) logout(userID string) {
+	for client := range h.clients {
+		if client.id == userID {
+			_ = client.conn.Close()
+			h.unregister <- client
+		}
+	}
+}
