@@ -17,7 +17,7 @@ func GetCookie(r *http.Request, name string) (string, error) {
 
 // GetUserID retrieves the user ID associated with the provided token.
 func GetUserID(database *database.Database, token string) (string, error) {
-	query := `SELECT id FROM online_status WHERE token = ?`
+	query := `SELECT id FROM user WHERE token = ?`
 	row := database.DB.QueryRow(query, token)
 
 	var userID string

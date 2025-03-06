@@ -40,12 +40,14 @@ func (m *Middleware) AuthMiddleware(next http.Handler) http.Handler {
 		token, err := utils.GetCookie(r, "session_token")
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			log.Println(err)
 			return
 		}
 
 		userID, err := utils.GetUserID(m.db, token)
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			log.Println(err)
 			return
 		}
 
