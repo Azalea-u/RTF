@@ -28,7 +28,7 @@ export default async function UserList() {
     container.innerHTML = `
         <h2>Users</h2>
         <div class="user-list">
-            ${Array.isArray(users) && users.length > 0 ? users.map(user => `<p>${user.username}</p>`).join('') : 'No users found'}
+            ${Array.isArray(users) && users.length > 0 ? users.map(user => `<p data-user-id="${user.id}" class="user">${user.username}</p>`).join('') : 'No users found'}
         </div>
     `;
     
