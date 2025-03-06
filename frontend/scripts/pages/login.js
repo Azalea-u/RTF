@@ -1,4 +1,5 @@
 import { renderPage } from "../router.js";
+import { showAlert } from "../utils.js";
 
 export default function register() {
     const container = document.createElement('div');
@@ -28,18 +29,14 @@ export default function register() {
         });
 
         if (response.ok) {
-            alert.classList.remove('hidden');
-            alert.textContent = 'Login successful';
-            alert.classList.add('success');
+            showAlert('Login successful', 'success');
             e.target.reset();
             setTimeout(() => {
                 renderPage('/');
-            }, 2000);
+            }, 1000);
         } else {
             const error = await response.json();
-            alert.classList.remove('hidden');
-            alert.textContent = error.message || 'Login failed, please try again later';
-            alert.classList.add('error');
+            showAlert(error.message || 'Login failed, please try again', 'error');
         }
     });
 

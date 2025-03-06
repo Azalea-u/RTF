@@ -10,3 +10,13 @@ export async function checkAuth() {
         return false;
     }
 }
+
+export function showAlert(message, type) {
+    const alert = document.getElementById('alert');
+    alert.classList.remove('hidden');
+    alert.textContent = message;
+    alert.classList.add(type);
+    setTimeout(() => {
+        alert.classList.add('hidden');
+    }, 2000);
+}

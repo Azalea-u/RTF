@@ -1,4 +1,5 @@
 import { renderPage } from "../router.js";
+import { showAlert } from "../utils.js";
 
 export default function register() {
     const container = document.createElement('div');
@@ -47,18 +48,14 @@ export default function register() {
         alert.classList.remove('loading');
 
         if (response.ok) {
-            alert.classList.remove('hidden');
-            alert.textContent = 'Registration successful!';
-            alert.classList.add('success');
+            showAlert('Registration successful', 'success');
             e.target.reset();
             setTimeout(() => {
                 renderPage('/login');
-            }, 2000);
+            }, 1000);
         } else {
             const error = await response.json();
-            alert.classList.remove('hidden');
-            alert.textContent = error.message || 'Registration failed. Please try again.';
-            alert.classList.add('error');
+            showAlert(error.message || 'Registration failed, please try again', 'error');
         }
     });
 
