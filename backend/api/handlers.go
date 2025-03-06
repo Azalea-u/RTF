@@ -15,6 +15,7 @@ type Handler struct {
 	wsHub *Hub
 }
 
+/* -------------------- Authentication -------------------- */
 // RegisterUser  registers a new user
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var user database.User
@@ -140,4 +141,77 @@ func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Logout successful"})
+}
+
+/* -------------------- Websocket -------------------- */
+
+// GetUsers returns a list of users
+func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
+    token, err := utils.GetCookie(r, "session_token")
+	if err != nil {
+		log.Println("Error getting session token:", err)
+		http.Error(w, "Error getting session token", http.StatusInternalServerError)
+		return
+	}
+    userID, err := utils.GetUserID(h.db, token)
+	if err != nil {
+		log.Println("Error getting user ID:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+    query := `
+        SELECT
+            u.id,
+            u.username
+        FROM
+            user u
+        LEFT JOIN (
+            SELECT
+                CASE
+                    WHEN sender_id = ? THEN receiver_id
+                    ELSE sender_id
+                END AS user_id,
+                MAX(created_at) AS latest_message_time
+            FROM message
+            WHERE sender_id = ? OR receiver_id = ?
+            GROUP BY
+                CASE
+                    WHEN sender_id = ? THEN receiver_id
+                    ELSE sender_id
+                END
+        ) m ON u.id = m.user_id
+        WHERE
+            u.id <> ?
+        ORDER BY
+            m.latest_message_time DESC,
+            u.username ASC;
+    `
+
+    rows, err := h.db.DB.Query(query, userID, userID, userID, userID, userID)
+    if err != nil {
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var users []database.User
+    for rows.Next() {
+        var user database.User
+        if err := rows.Scan(&user.ID, &user.Username); err != nil {
+            http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+            return
+        }
+        users = append(users, user)
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    if len(users) == 0 {
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("[]")) // Return an empty JSON array if no users found
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(users)
 }

@@ -1,11 +1,12 @@
 import { renderPage } from "../router.js";
 import { showAlert } from "../utils.js";
+import UserList from "./components/userlist.js";
 
-export default function home() {
+export default async function home() {
     const container = document.createElement('div');
     container.innerHTML = `
         <nav class="navbar">
-            <h1>Welcome to the Forum</h1>
+            <h1>Welcome ${localStorage.getItem('username')}</h1>
             <button id="logout-button">Logout</button>
         </nav>
         <div id="content">
@@ -13,7 +14,14 @@ export default function home() {
         </div>
     `;
 
-    const alert = document.getElementById('alert');
+    // Fetch and render the user list
+    const userList = await UserList();
+    if (userList) {
+        container.appendChild(userList);
+    } else {
+        console.error('User  list is not a valid node');
+    }
+
     container.querySelector('#logout-button').addEventListener('click', async () => {
         const response = await fetch('/api/logout', {
             method: 'POST',

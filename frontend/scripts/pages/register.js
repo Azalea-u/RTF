@@ -26,8 +26,6 @@ export default function register() {
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
-        console.log(JSON.stringify(data));
-        const alert = document.getElementById('alert');
         if (!data.username || !data.email || !data.password || !data.first_name || !data.last_name || !data.age || !data.gender) {
             console.error('All fields must be filled out');
             return;
@@ -43,9 +41,6 @@ export default function register() {
             },
             body: JSON.stringify(data),
         });
-
-        // Hide loading indicator
-        alert.classList.remove('loading');
 
         if (response.ok) {
             showAlert('Registration successful', 'success');

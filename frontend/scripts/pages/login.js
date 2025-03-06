@@ -17,7 +17,6 @@ export default function register() {
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
-        const alert = document.getElementById('alert');
 
         const response = await fetch('/api/login', {
             method: 'POST',
@@ -29,7 +28,10 @@ export default function register() {
         });
 
         if (response.ok) {
-            showAlert('Login successful', 'success');
+            const user = await response.json();
+            localStorage.setItem('userId', user.id);
+            localStorage.setItem('username', user.username);
+            showAlert('Welcome, ' + user.username + '!', 'success', 'success');
             e.target.reset();
             setTimeout(() => {
                 renderPage('/');

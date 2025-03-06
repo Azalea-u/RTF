@@ -1,4 +1,3 @@
-
 import { checkAuth } from './utils.js';
 import home from './pages/home.js';
 import register from './pages/register.js';
@@ -10,22 +9,28 @@ const routes = {
     '/login': login,
 };
 
-export function renderPage(path) {
+export async function renderPage(path) {
     const app = document.getElementById('app');
     const page = routes[path] || login;
+
     app.innerHTML = '';
-    app.appendChild(page());
-    if (path === '/login' || path === '/register') {
-        checkAuth().then(authenticated => {
-            if (authenticated) {
-                renderPage('/');
-            }
-        });
+
+    const pageNode = await page();
+    if (pageNode instanceof Node) {
+        app.appendChild(pageNode);
     } else {
-        checkAuth().then(authenticated => {
-            if (!authenticated) {
-                renderPage('/login');
-            }
-        });
+        console.error('Rendered page is not a valid Node:', pageNode);
+    }
+
+    if (path === '/login' || path === '/register') {
+        const authenticated = await checkAuth();
+        if (authenticated) {
+            renderPage('/');
+        }
+    } else {
+        const authenticated = await checkAuth();
+        if (!authenticated) {
+            renderPage('/login');
+        }
     }
 }
