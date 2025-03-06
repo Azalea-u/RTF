@@ -15,40 +15,41 @@ type Handler struct {
 }
 
 // RegisterUser  registers a new user
-func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var user database.User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
+func (h *Handler) RegisterUser (w http.ResponseWriter, r *http.Request) {
+    var user database.User
+    if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+        http.Error(w, `{"message": "Invalid request payload"}`, http.StatusBadRequest)
+        return
+    }
 
-	if err := utils.ValidateUser(user); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+    if err := utils.ValidateUser (user); err != nil {
+        http.Error(w, `{"message": "`+err.Error()+`"}`, http.StatusBadRequest)
+        return
+    }
 
-	hash, err := utils.HashPassword(user.Password)
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	user.ID, err = utils.NewUUID()
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+    hash, err := utils.HashPassword(user.Password)
+    if err != nil {
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
+    user.ID, err = utils.NewUUID()
+    if err != nil {
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
 
-	query := `INSERT INTO user (id, username, email, password, first_name, last_name, age, gender) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err = h.db.DB.Exec(query, user.ID.String(), user.Username, user.Email, hash, user.FirstName, user.LastName, user.Age, user.Gender)
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+    query := `INSERT INTO user (id, username, email, password, first_name, last_name, age, gender) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    _, err = h.db.DB.Exec(query, user.ID.String(), user.Username, user.Email, hash, user.FirstName, user.LastName, user.Age, user.Gender)
+    if err != nil {
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
 
-	user.Password = ""
+    user.Password = ""
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
+    w.WriteHeader(http.StatusCreated)
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(user)
 }
 
 // LoginUser  logs in a user

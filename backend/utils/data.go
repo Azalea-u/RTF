@@ -24,7 +24,7 @@ func isValidEmail(email string) bool {
 	return re.MatchString(email)
 }
 
-func ValidateUser (user database.User) error {
+func ValidateUser(user database.User) error {
 	if user.Username == "" || user.Email == "" || user.Password == "" || user.FirstName == "" || user.LastName == "" || user.Age == 0 || user.Gender == "" {
 		return errors.New("All fields are required")
 	}

@@ -4,18 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real Time Forum</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <noscript id="noscript">
         <p>Please enable JavaScript to use this app.</p>
     </noscript>
-    <div id="error-alert" style="display: none;">
+    <div id="alert" class="hidden">
+        <button aria-label="Close" class="close">&times;</button>
         <!-- Error message will be displayed here -->
     </div>
 
     <main id="app">
         <!-- main content will be displayed here -->
     </main>
-    
+
+    <script type="module" src="scripts/app.js"></script>
 </body>
 </html>

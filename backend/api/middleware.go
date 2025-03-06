@@ -14,7 +14,7 @@ type Middleware struct {
 
 func (m *Middleware) LogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Print("\033[36m[---------------------------------]\033[0m")
+		log.Print("\033[36m--------------------------------------\033[0m")
 		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
 		start := time.Now()
 		next.ServeHTTP(w, r)
