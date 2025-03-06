@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS user (
     age INTEGER CHECK(age > 0) NOT NULL,
     token BLOB NOT NULL,
     gender TEXT CHECK(gender IN ('male', 'female', 'other')) NOT NULL
-)
+);
 
 -- Post Table --
 CREATE TABLE IF NOT EXISTS post (
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS post (
     user_id INTEGER NOT NULL,
     created_at TIMESTAMP NOT NULL,
     FOREIGN KEY(user_id) REFERENCES user(id)
-)
+);
 
 -- Comment Table --
 CREATE TABLE IF NOT EXISTS comment (
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS comment (
     created_at TIMESTAMP NOT NULL,
     FOREIGN KEY(user_id) REFERENCES user(id),
     FOREIGN KEY(post_id) REFERENCES post(id)
-)
+);
 
 -- message table --
 CREATE TABLE IF NOT EXISTS message (
@@ -42,4 +42,4 @@ CREATE TABLE IF NOT EXISTS message (
     created_at TIMESTAMP NOT NULL,
     FOREIGN KEY(sender_id) REFERENCES user(id),
     FOREIGN KEY(receiver_id) REFERENCES user(id)
-)
+);
