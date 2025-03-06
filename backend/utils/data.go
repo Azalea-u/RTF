@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"log"
 	"real-time-forum/backend/database"
 	"regexp"
 
@@ -26,6 +27,7 @@ func isValidEmail(email string) bool {
 
 func ValidateUser(user database.User) error {
 	if user.Username == "" || user.Email == "" || user.Password == "" || user.FirstName == "" || user.LastName == "" || user.Age == 0 || user.Gender == "" {
+		log.Println(user.Username, user.Email, user.Password, user.FirstName, user.LastName, user.Age, user.Gender)
 		return errors.New("All fields are required")
 	}
 	if !isValidEmail(user.Email) {
