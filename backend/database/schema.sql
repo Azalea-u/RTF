@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS user (
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     age INTEGER CHECK(age > 0) NOT NULL,
-    token BLOB NOT NULL,
+    token BLOB UNIQUE,
     gender TEXT CHECK(gender IN ('male', 'female', 'other')) NOT NULL
 );
 

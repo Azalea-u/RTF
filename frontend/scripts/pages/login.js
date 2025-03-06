@@ -5,8 +5,8 @@ export default function register() {
     container.innerHTML = `
         <h1>Login</h1>
         <form id="login-form">
-            <input type="text" id="username-or-email" placeholder="Username or Email" required>
-            <input type="password" id="password" placeholder="Password" required>
+            <input type="text" id="username-or-email" name="email_or_username" placeholder="Username or Email" required>
+            <input type="password" id="password" name="password" placeholder="Password" required>
             <button type="submit">Login</button>
             <p>Don't have an account? <a href="#" id="register-link">Register</a></p>
         </form>

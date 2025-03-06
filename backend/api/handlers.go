@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"real-time-forum/backend/database"
 	"real-time-forum/backend/utils"
@@ -15,41 +16,41 @@ type Handler struct {
 }
 
 // RegisterUser  registers a new user
-func (h *Handler) RegisterUser (w http.ResponseWriter, r *http.Request) {
-    var user database.User
-    if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-        http.Error(w, `{"message": "Invalid request payload"}`, http.StatusBadRequest)
-        return
-    }
+func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+	var user database.User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, `{"message": "Invalid request payload"}`, http.StatusBadRequest)
+		return
+	}
 
-    if err := utils.ValidateUser (user); err != nil {
-        http.Error(w, `{"message": "`+err.Error()+`"}`, http.StatusBadRequest)
-        return
-    }
+	if err := utils.ValidateUser(user); err != nil {
+		http.Error(w, `{"message": "`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
 
-    hash, err := utils.HashPassword(user.Password)
-    if err != nil {
-        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
-        return
-    }
-    user.ID, err = utils.NewUUID()
-    if err != nil {
-        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
-        return
-    }
+	hash, err := utils.HashPassword(user.Password)
+	if err != nil {
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	user.ID, err = utils.NewUUID()
+	if err != nil {
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
 
-    query := `INSERT INTO user (id, username, email, password, first_name, last_name, age, gender) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    _, err = h.db.DB.Exec(query, user.ID.String(), user.Username, user.Email, hash, user.FirstName, user.LastName, user.Age, user.Gender)
-    if err != nil {
-        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
-        return
-    }
+	query := `INSERT INTO user (id, username, email, password, first_name, last_name, age, gender) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err = h.db.DB.Exec(query, user.ID.String(), user.Username, user.Email, hash, user.FirstName, user.LastName, user.Age, user.Gender)
+	if err != nil {
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
 
-    user.Password = ""
+	user.Password = ""
 
-    w.WriteHeader(http.StatusCreated)
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(user)
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
 }
 
 // LoginUser  logs in a user
@@ -60,9 +61,10 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, `{"message": "Invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
+	log.Println(credentials)
 
 	var user database.User
 	query := `SELECT id, username, email, password, first_name, last_name, age, gender FROM user WHERE email = ? OR username = ?`
@@ -71,15 +73,15 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	err := row.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.FirstName, &user.LastName, &user.Age, &user.Gender)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "User  not found", http.StatusNotFound)
+			http.Error(w, `{"message": "User  not found"}`, http.StatusNotFound)
 			return
 		}
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
 	if err := utils.CheckPassword(credentials.Password, user.Password); err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		http.Error(w, `{"message": "Invalid credentials"}`, http.StatusUnauthorized)
 		return
 	}
 
@@ -94,13 +96,14 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	query = `UPDATE user SET token = ? WHERE id = ?`
 	_, err = h.db.DB.Exec(query, user.ID.String(), user.ID.String())
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
 	user.Password = ""
 
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
 }
 
@@ -108,7 +111,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	token, err := utils.GetCookie(r, "session_token")
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, `{"message": "Unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
 
@@ -123,15 +126,18 @@ func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	query := `UPDATE user SET token = NULL WHERE id = ?`
 	_, err = h.db.DB.Exec(query, token)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
 	userID, err := utils.GetUserID(h.db, token)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 	h.wsHub.logout(userID)
+
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logout successful"})
 }

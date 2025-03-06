@@ -7,16 +7,16 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `db:"id"`
-	Username  string    `db:"username"`
-	Email     string    `db:"email"`
-	Password  string    `db:"password"`
-	FirstName string    `db:"first_name"`
-	LastName  string    `db:"last_name"`
-	Age       int       `db:"age"`
-	Token     []byte    `db:"token"`
-	Gender    string    `db:"gender"`
-	CreatedAt time.Time `db:"created_at"`
+	ID        uuid.UUID `db:"id" json:"id"`
+	Username  string    `db:"username" json:"username"`
+	Email     string    `db:"email" json:"email"`
+	Password  string    `db:"password" json:"password"`
+	FirstName string    `db:"first_name" json:"first_name"`
+	LastName  string    `db:"last_name" json:"last_name"`
+	Age       int       `db:"age" json:"age"`
+	Token     []byte    `db:"token" json:"token"`
+	Gender    string    `db:"gender" json:"gender"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }
 
 type Post struct {
