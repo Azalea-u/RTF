@@ -1,9 +1,9 @@
-import { showAlert } from "./utils";
-import { inChat, updateChat } from "./pages/components/chat";
-import { updateUserList, reloadUserList } from "./pages/components/userlist";
+import { showAlert } from "./utils.js";
+import { inChat, updateChat } from "./pages/components/chat.js";
+import { reloadUserList } from "./pages/components/userlist.js";
 
 let socket;
-let currentUserId = localStorage.getItem('userId');
+const currentUserId = localStorage.getItem('userId');
 
 export function initWebSocket() {
     if (socket && socket.readyState === WebSocket.OPEN) return;
@@ -15,30 +15,7 @@ export function initWebSocket() {
         console.log('WebSocket connection established');
     };
 
-    socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-
-        switch (message.type) {
-            case 'chat':
-                if (message.sender_id !== currentUserId) {
-                    showAlert('New message from ' + document.getElementById('chat-username').textContent, 'success');
-                    if (inChat) {
-                        updateChat(message);
-                    }
-                    reloadUserList(message.receiver_id, message.sender_id); // Reload the user list when a new message is received from only receiver and sender to reorders the list of users
-                }
-                break;
-            case 'user_connect':
-                updateUserList(message.sender_id, 'online');
-                break;
-            case 'user_disconnect':
-                updateUserList(message.sender_id, 'offline');
-                break;
-            default:
-                console.log('Unknown message type:', message.type);
-                break;
-        }
-    };
+    socket.onmessage = handleMessage;
 
     socket.onerror = (error) => {
         console.error('WebSocket error:', error);
@@ -46,7 +23,33 @@ export function initWebSocket() {
     };
 
     socket.onclose = () => {
-        console.log('WebSocket connection closed');
-        setTimeout(initWebSocket, 3000);
+        console.log('WebSocket connection closed. Attempting to reconnect...');
+        setTimeout(initWebSocket, 3000); // Attempt to reconnect after 3 seconds
     };
+}
+
+function handleMessage(event) {
+    const message = JSON.parse(event.data);
+
+    switch (message.type) {
+        case 'chat':
+            handleChatMessage(message.content);
+            break;
+        case 'user_connect':
+        case 'user_disconnect':
+            reloadUserList();
+            break;
+        default:
+            console.warn('Unknown message type:', message.type);
+    }
+}
+
+function handleChatMessage(message) {
+    if (message.sender_id !== currentUserId) {
+        showAlert(`New message from ${document.getElementById('chat-username').textContent}`, 'success');
+        if (inChat) {
+            updateChat(message);
+        }
+        reloadUserList([message.sender_id, message.receiver_id]);
+    }
 }

@@ -18,6 +18,7 @@ type User struct {
 	Token     []byte    `db:"token" json:"token"`
 	Gender    string    `db:"gender" json:"gender"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	Online    bool      `json:"online"`
 }
 
 // Post represents a post created by a user.
@@ -41,7 +42,6 @@ type Comment struct {
 
 // Message represents a message sent between users.
 type Message struct {
-	Type       string    `json:"type"`
 	ID         int       `db:"id" json:"id"`
 	SenderID   int       `db:"sender_id" json:"sender_id"`
 	ReceiverID int       `db:"receiver_id" json:"receiver_id"`

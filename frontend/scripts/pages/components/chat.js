@@ -1,4 +1,7 @@
+import { renderPage } from '../../router.js';
 import { showAlert, TimeAgo } from '../../utils.js';
+
+export let inChat = false;
 
 function messageBubble(message) {
     const container = document.createElement('div');
@@ -24,8 +27,10 @@ export default async function Chat(userId) {
         showAlert('Failed to fetch messages, please try again', 'error');
         return;
     }
+    inChat = true;
 
     container.innerHTML = `
+        <button id="exit-chat">Exit</button>
         <h2>Chating with ${userId}</h2>
         <div class="messages">
             ${Array.isArray(messages) && messages.length > 0 ? 
@@ -60,6 +65,11 @@ export default async function Chat(userId) {
             return;
         }
         messageInput.value = '';
+    });
+
+    container.querySelector('#exit-chat').addEventListener('click', () => {
+        inChat = false;
+        renderPage('/');
     });
 
     return container;

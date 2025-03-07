@@ -44,12 +44,18 @@ func (h *Hub) StartHub() {
 		case client := <-h.register:
 			h.clients[client] = true
 			log.Println("Client registered:", client.id)
+			go func ()  {
+				h.broadcast <- []byte(`{"type": "user_connected"}`)
+			}()
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				_ = client.conn.Close()
 				log.Println("Client unregistered:", client.id)
+				go func ()  {
+					h.broadcast <- []byte(`{"type": "user_disconnected"}`)
+				}()
 			}
 
 		case message := <-h.broadcast:
@@ -100,7 +106,9 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, db *databa
 			log.Println("Error reading message:", err)
 			break
 		}
-		h.broadcast <- message
+		go func() {
+			h.broadcast <- []byte(`{"type": "chat", "content": "` + string(message) + `"}`)
+		}()
 	}
 }
 

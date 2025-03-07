@@ -29,7 +29,11 @@ export default async function UserList(onUserClick) {
         <h2>Users</h2>
         <div class="user-list">
             ${Array.isArray(users) && users.length > 0 ? 
-                users.map(user => `<p data-user-id="${user.id}" class="user">${user.username} <span class="offline"></span></p>`).join('') : 
+                users.map(user => `
+                    <p data-user-id="${user.id}" class="user">
+                        ${user.username} 
+                        <span class="${user.online ? 'online' : 'offline'}"></span>
+                    </p>`).join('') : 
                 'No users found'}
         </div>
     `;
