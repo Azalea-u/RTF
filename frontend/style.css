@@ -189,3 +189,21 @@ article li {
     align-items: center;
     justify-content: center;
 }
+
+.offline {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #7a7a7a;
+    display: inline-block;
+    margin-left: 5px;
+}
+
+.online {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #00ff00;
+    display: inline-block;
+    margin-left: 5px;
+}

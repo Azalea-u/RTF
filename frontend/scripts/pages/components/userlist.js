@@ -19,7 +19,7 @@ async function fetchUsers() {
     }
 }
 
-export default async function UserList() {
+export default async function UserList(onUserClick) {
     await fetchUsers();
 
     const container = document.createElement('aside');
@@ -28,9 +28,19 @@ export default async function UserList() {
     container.innerHTML = `
         <h2>Users</h2>
         <div class="user-list">
-            ${Array.isArray(users) && users.length > 0 ? users.map(user => `<p data-user-id="${user.id}" class="user">${user.username}</p>`).join('') : 'No users found'}
+            ${Array.isArray(users) && users.length > 0 ? 
+                users.map(user => `<p data-user-id="${user.id}" class="user">${user.username} <span class="offline"></span></p>`).join('') : 
+                'No users found'}
         </div>
     `;
-    
+
+    const userElements = container.querySelectorAll('.user');
+    userElements.forEach(userElement => {
+        userElement.addEventListener('click', () => {
+            const userId = userElement.getAttribute('data-user-id');
+            onUserClick(userId);
+        });
+    });
+
     return container;
 }

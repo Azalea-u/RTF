@@ -1,7 +1,7 @@
 import { renderPage } from "./router.js";
 
 addEventListener('load', () => {
-    renderPage(window.location.pathname);
+    renderPage("/login");
 });
 
 const alert = document.getElementById('alert');

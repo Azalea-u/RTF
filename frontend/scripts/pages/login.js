@@ -33,6 +33,7 @@ export default function register() {
             localStorage.setItem('username', user.username);
             showAlert('Welcome, ' + user.username + '!', 'success', 'success');
             e.target.reset();
+            initWebSocket();
             setTimeout(() => {
                 renderPage('/');
             }, 1000);
