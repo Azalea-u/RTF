@@ -31,6 +31,11 @@ func NewRouter(db *database.Database , wsHub *Hub) *http.ServeMux {
 		}
 	}))))
 
+	go wsHub.StartHub()
+	r.Handle("/api/ws", wrap(mw.AuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.wsHub.HandleWebSocket(w, r, db)
+	}))))
+
 	r.Handle("/", http.FileServer(http.Dir("../frontend")))
 	return r
 }

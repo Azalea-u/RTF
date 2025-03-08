@@ -1,6 +1,5 @@
 import { renderPage } from "../router.js";
 import { showAlert } from "../utils.js";
-//import { initWebSocket } from "../websocket.js";
 
 export default function register() {
     const container = document.createElement('div');
@@ -34,7 +33,6 @@ export default function register() {
             localStorage.setItem('username', user.username);
             showAlert('Welcome, ' + user.username + '!', 'success', 'success');
             e.target.reset();
-            //initWebSocket();
             setTimeout(() => {
                 renderPage('/');
             }, 1000);

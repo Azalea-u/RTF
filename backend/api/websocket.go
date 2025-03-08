@@ -125,6 +125,19 @@ func (h *Hub) logout(userID string) {
 		if client.id == userID {
 			_ = client.conn.Close()
 			h.unregister <- client
+			go func() {
+				h.broadcast <- []byte(`{"type": "user_disconnected"}`)
+			}()
+		}
+	}
+}
+
+func (h *Hub) login(userID string) {
+	for client := range h.clients {
+		if client.id == userID {
+			go func() {
+				h.broadcast <- []byte(`{"type": "user_connected"}`)
+			}()
 		}
 	}
 }

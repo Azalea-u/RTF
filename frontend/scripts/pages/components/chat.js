@@ -34,8 +34,10 @@ export default async function Chat(userId, username) {
     inChat = true;
 
     container.innerHTML = `
-        <button id="exit-chat">Exit</button>
-        <h2>Chatting with ${username}</h2>
+        <div class="chat-header">
+            <button id="exit-chat">Exit</button>
+            <h2>Chatting with ${username}</h2>
+        </div>
         <div class="messages">
             ${Array.isArray(messages) && messages.length > 0 ? 
                 messages.map(message => messageBubble(message)).join('') : 

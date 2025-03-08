@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"real-time-forum/backend/database"
@@ -14,7 +15,7 @@ type Middleware struct {
 
 func (m *Middleware) LogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Print("\033[36m--------------------------------------\033[0m")
+		fmt.Println("\033[36m---------------------------------------------------------\033[0m")
 		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
 		start := time.Now()
 		next.ServeHTTP(w, r)
@@ -47,7 +48,7 @@ func (m *Middleware) AuthMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
-		}
+		}		
 
 		r.Header.Set("user_id", userID)
 		next.ServeHTTP(w, r)

@@ -2,8 +2,10 @@ import { renderPage } from "../router.js";
 import { showAlert } from "../utils.js";
 import UserList from "./components/userlist.js";
 import Chat from "./components/chat.js";
+import { initWebSocket } from "../websocket.js";
 
 export default async function home() {
+    initWebSocket();
     const container = document.createElement('div');
     container.innerHTML = `
         <nav class="navbar">
@@ -16,7 +18,7 @@ export default async function home() {
     `;
 
     // Fetch and render the user list
-    const userList = await UserList(onUserClick);
+    const userList = await UserList();
     container.appendChild(userList);
 
     container.querySelector('#logout-button').addEventListener('click', async () => {
@@ -30,17 +32,20 @@ export default async function home() {
             setTimeout(() => {
                 renderPage('/login');
             }, 1000);
+            // send 
         } else {
             showAlert('Logout failed', 'error');
         }
     });
 
-    async function onUserClick(userId, username) {
-        const chatComponent = await Chat(userId, username);
-        const contentDiv = container.querySelector('#content');
-        contentDiv.innerHTML = ''; 
-        contentDiv.appendChild(chatComponent);
-    }
+    
 
     return container;
+}
+
+export async function onUserClick(userId, username) {
+    const chatComponent = await Chat(userId, username);
+    const contentDiv = document.querySelector('#content');
+    contentDiv.innerHTML = ''; 
+    contentDiv.appendChild(chatComponent);
 }

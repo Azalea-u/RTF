@@ -1,6 +1,7 @@
 import { showAlert } from "./utils.js";
 import { inChat, updateChat } from "./pages/components/chat.js";
 import { reloadUserList } from "./pages/components/userlist.js";
+import { renderPage } from "./router.js";
 
 let socket;
 const currentUserId = localStorage.getItem('userId');
@@ -9,7 +10,7 @@ export function initWebSocket() {
     if (socket && socket.readyState === WebSocket.OPEN) return;
 
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    socket = new WebSocket(`${protocol}://${location.host}/api/chat`);
+    socket = new WebSocket(`${protocol}://${location.host}/api/ws`);
 
     socket.onopen = () => {
         console.log('WebSocket connection established');
@@ -24,7 +25,7 @@ export function initWebSocket() {
 
     socket.onclose = () => {
         console.log('WebSocket connection closed. Attempting to reconnect...');
-        setTimeout(initWebSocket, 3000); // Attempt to reconnect after 3 seconds
+        renderPage('/login');
     };
 }
 
@@ -35,8 +36,8 @@ function handleMessage(event) {
         case 'chat':
             handleChatMessage(message.content);
             break;
-        case 'user_connect':
-        case 'user_disconnect':
+        case 'user_connected':
+        case 'user_disconnected':
             reloadUserList();
             break;
         default:

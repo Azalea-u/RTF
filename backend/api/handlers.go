@@ -90,22 +90,30 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := utils.NewUUID()
+	if err != nil {
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
-		Value:    user.ID.String(),
+		Value:    token.String(),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(time.Hour * 24),
 	})
 
 	query = `UPDATE user SET token = ? WHERE id = ?`
-	_, err = h.db.DB.Exec(query, user.ID.String(), user.ID.String())
+	_, err = h.db.DB.Exec(query, token, user.ID)
 	if err != nil {
 		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
 	user.Password = ""
+
+	h.wsHub.login(user.ID.String())
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -220,6 +228,10 @@ func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 		users = append(users, user)
 	}
 
+	if users == nil {
+		users = []database.User{}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(users)
@@ -251,7 +263,7 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		SELECT sender_id, receiver_id, content, created_at 
 		FROM message 
 		WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) 
-		ORDER BY created_at DESC 
+		ORDER BY created_at ASC 
 		LIMIT 10
 	`
 	rows, err := h.db.DB.Query(query, userID, otherUserID, otherUserID, userID)

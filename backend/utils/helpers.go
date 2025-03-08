@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"database/sql"
 	"net/http"
 	"real-time-forum/backend/database"
 )
@@ -19,13 +18,12 @@ func GetCookie(r *http.Request, name string) (string, error) {
 func GetUserID(database *database.Database, token string) (string, error) {
 	query := `SELECT id FROM user WHERE token = ?`
 	row := database.DB.QueryRow(query, token)
-
+	if row.Err() != nil {
+		return "", row.Err()
+	}
 	var userID string
 	err := row.Scan(&userID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", nil 
-		}
 		return "", err
 	}
 
