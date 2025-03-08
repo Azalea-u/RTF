@@ -15,23 +15,27 @@ function messageBubble(message) {
     return container;
 }
 
-export default async function Chat(userId) {
+export default async function Chat(userId, username) {
     const container = document.createElement('div');
     container.id = 'chat';
-    messages = await fetch(`/api/messages/${userId}`, {
+
+    const response = await fetch(`/api/messages/${userId}`, {
         method: 'GET',
         credentials: 'include',
     });
-    if (!messages.ok) {
+
+    if (!response.ok) {
         console.error('Failed to fetch messages');
         showAlert('Failed to fetch messages, please try again', 'error');
         return;
     }
+
+    const messages = await response.json();
     inChat = true;
 
     container.innerHTML = `
         <button id="exit-chat">Exit</button>
-        <h2>Chating with ${userId}</h2>
+        <h2>Chatting with ${username}</h2>
         <div class="messages">
             ${Array.isArray(messages) && messages.length > 0 ? 
                 messages.map(message => messageBubble(message)).join('') : 
@@ -42,16 +46,21 @@ export default async function Chat(userId) {
             <button type="submit">Send</button>
         </form>
     `;
+    updateChat(userId);
 
     container.querySelector('#message-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const messageInput = container.querySelector('#message-input');
         const message = messageInput.value;
-        if (!message) {
+
+        if (!message || message.trim() === '') {
             console.error('Message is empty');
+            showAlert('Please enter a message', 'error');
             return;
         }
-        const response = await fetch(`/api/messages/${userId}`, {
+        
+
+        const sendResponse = await fetch(`/api/messages/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -59,12 +68,15 @@ export default async function Chat(userId) {
             credentials: 'include',
             body: JSON.stringify({ content: message }),
         });
-        if (!response.ok) {
+
+        if (!sendResponse.ok) {
             console.error('Failed to send message');
             showAlert('Failed to send message, please try again', 'error');
             return;
         }
+
         messageInput.value = '';
+        updateChat(userId); // Fetch updated messages for the current chat
     });
 
     container.querySelector('#exit-chat').addEventListener('click', () => {
@@ -73,4 +85,24 @@ export default async function Chat(userId) {
     });
 
     return container;
+}
+
+export function updateChat(userId) {
+    fetch(`/api/messages/${userId}`)
+        .then(response => response.json())
+        .then(messages => {
+            const messagesContainer = document.querySelector('.messages');
+            messagesContainer.innerHTML = '';
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = 'No messages yet for this conversation';
+                return;
+            }
+            messages.forEach(message => {
+                messagesContainer.appendChild(messageBubble(message));
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching updated messages:', error);
+            showAlert('Failed to update chat messages', 'error');
+        });
 }

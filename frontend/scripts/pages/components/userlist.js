@@ -42,7 +42,7 @@ export default async function UserList(onUserClick) {
     userElements.forEach(userElement => {
         userElement.addEventListener('click', () => {
             const userId = userElement.getAttribute('data-user-id');
-            onUserClick(userId);
+            onUserClick(userId, userElement.textContent);
         });
     });
 

@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"real-time-forum/backend/database"
 	"real-time-forum/backend/utils"
+	"strings"
 	"time"
+
+	"github.com/gofrs/uuid/v5"
 )
 
 type Handler struct {
@@ -16,6 +19,7 @@ type Handler struct {
 }
 
 /* -------------------- Authentication -------------------- */
+
 // RegisterUser  registers a new user
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var user database.User
@@ -144,6 +148,7 @@ func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 }
 
 /* -------------------- Websocket -------------------- */
+
 // GetUsers returns a list of users along with their online status
 func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	token, err := utils.GetCookie(r, "session_token")
@@ -218,4 +223,122 @@ func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(users)
+}
+
+// GetMessages returns the messages between two users 10 at a time
+func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
+	token, err := utils.GetCookie(r, "session_token")
+	if err != nil {
+		log.Println("Error getting session token:", err)
+		http.Error(w, "Error getting session token", http.StatusInternalServerError)
+		return
+	}
+
+	userID, err := utils.GetUserID(h.db, token)
+	if err != nil {
+		log.Println("Error getting user ID:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	otherUserID := r.URL.Path[len("/api/messages/"):]
+	if otherUserID == "" {
+		http.Error(w, `{"message": "Other user ID is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	query := `
+		SELECT sender_id, receiver_id, content, created_at 
+		FROM message 
+		WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) 
+		ORDER BY created_at DESC 
+		LIMIT 10
+	`
+	rows, err := h.db.DB.Query(query, userID, otherUserID, otherUserID, userID)
+	if err != nil {
+		log.Println("Error querying messages:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var messages []database.Message
+	for rows.Next() {
+		var message database.Message
+		if err := rows.Scan(&message.SenderID, &message.ReceiverID, &message.Content, &message.CreatedAt); err != nil {
+			log.Println("Error scanning message:", err)
+			http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+			return
+		}
+		messages = append(messages, message)
+	}
+	if messages == nil {
+		messages = []database.Message{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(messages); err != nil {
+		log.Println("Error encoding messages:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+	}
+}
+
+// SendMessage sends a message to another user
+func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
+	token, err := utils.GetCookie(r, "session_token")
+	if err != nil {
+		log.Println("Error getting session token:", err)
+		http.Error(w, "Error getting session token", http.StatusInternalServerError)
+		return
+	}
+
+	userID, err := utils.GetUserID(h.db, token)
+	if err != nil {
+		log.Println("Error getting user ID:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	otherUserID := r.URL.Path[len("/api/messages/"):]
+	if otherUserID == "" {
+		http.Error(w, `{"message": "Other user ID is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	var message database.Message
+	if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
+		log.Println("Error decoding message:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	if message.Content == "" || strings.TrimSpace(message.Content) == "" {
+		http.Error(w, `{"message": "Message cannot be empty"}`, http.StatusBadRequest)
+		return
+	}
+
+	message.SenderID, err = uuid.FromString(userID)
+	if err != nil {
+		log.Println("Error parsing sender ID:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	message.ReceiverID, err = uuid.FromString(otherUserID)
+	if err != nil {
+		log.Println("Error parsing receiver ID:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	query := `INSERT INTO message (sender_id, receiver_id, content, created_at) VALUES (?, ?, ?, ?)`
+	_, err = h.db.DB.Exec(query, message.SenderID, message.ReceiverID, message.Content, time.Now())
+	if err != nil {
+		log.Println("Error inserting message:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }

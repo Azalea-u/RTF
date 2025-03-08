@@ -27,7 +27,7 @@ type Post struct {
 	Title     string    `db:"title" json:"title"`
 	Content   string    `db:"content" json:"content"`
 	Category  string    `db:"category" json:"category"`
-	UserID    int       `db:"user_id" json:"user_id"`
+	UserID    uuid.UUID `db:"user_id" json:"user_id"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }
 
@@ -35,7 +35,7 @@ type Post struct {
 type Comment struct {
 	ID        int       `db:"id" json:"id"`
 	Content   string    `db:"content" json:"content"`
-	UserID    int       `db:"user_id" json:"user_id"`
+	UserID    uuid.UUID `db:"user_id" json:"user_id"`
 	PostID    int       `db:"post_id" json:"post_id"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }
@@ -43,8 +43,8 @@ type Comment struct {
 // Message represents a message sent between users.
 type Message struct {
 	ID         int       `db:"id" json:"id"`
-	SenderID   int       `db:"sender_id" json:"sender_id"`
-	ReceiverID int       `db:"receiver_id" json:"receiver_id"`
+	SenderID   uuid.UUID `db:"sender_id" json:"sender_id"`
+	ReceiverID uuid.UUID `db:"receiver_id" json:"receiver_id"`
 	Content    string    `db:"content" json:"content"`
 	CreatedAt  time.Time `db:"created_at" json:"created_at"`
 }

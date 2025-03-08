@@ -23,6 +23,13 @@ func NewRouter(db *database.Database , wsHub *Hub) *http.ServeMux {
 	r.Handle("/api/logout", wrap(mw.AuthMiddleware(http.HandlerFunc(h.LogoutUser))))
 
 	r.Handle("/api/get-users", wrap(mw.AuthMiddleware(http.HandlerFunc(h.GetUsers))))
+	r.Handle("/api/messages/{id}", wrap(mw.AuthMiddleware(http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			h.GetMessages(w, r)
+		} else if r.Method == "POST" {
+			h.SendMessage(w, r)
+		}
+	}))))
 
 	r.Handle("/", http.FileServer(http.Dir("../frontend")))
 	return r
