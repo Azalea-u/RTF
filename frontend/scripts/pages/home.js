@@ -3,6 +3,7 @@ import { showAlert } from "../utils.js";
 import UserList from "./components/userlist.js";
 import Chat from "./components/chat.js";
 import { initWebSocket } from "../websocket.js";
+import Posts from "./components/posts.js"
 
 export default async function home() {
     initWebSocket();
@@ -13,13 +14,16 @@ export default async function home() {
             <button id="logout-button">Logout</button>
         </nav>
         <div id="content">
-            <h2>Select a user to chat with</h2>
         </div>
     `;
 
     // Fetch and render the user list
     const userList = await UserList();
     container.appendChild(userList);
+
+    // Fetch and render the posts
+    const postsComponent = await Posts();
+    container.querySelector('#content').appendChild(postsComponent);
 
     container.querySelector('#logout-button').addEventListener('click', async () => {
         const response = await fetch('/api/logout', {
@@ -32,14 +36,10 @@ export default async function home() {
             setTimeout(() => {
                 renderPage('/login');
             }, 1000);
-            // send 
         } else {
             showAlert('Logout failed', 'error');
         }
     });
-
-    
-
     return container;
 }
 

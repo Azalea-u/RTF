@@ -22,6 +22,11 @@ func NewRouter(db *database.Database , wsHub *Hub) *http.ServeMux {
 	r.Handle("/api/login", wrap(http.HandlerFunc(h.LoginUser)))
 	r.Handle("/api/logout", wrap(mw.AuthMiddleware(http.HandlerFunc(h.LogoutUser))))
 
+	r.Handle("/api/get-posts", wrap(mw.AuthMiddleware(http.HandlerFunc(h.GetPosts))))
+	r.Handle("/api/get-comments", wrap(mw.AuthMiddleware(http.HandlerFunc(h.GetComments))))
+	r.Handle("/api/create-post", wrap(mw.AuthMiddleware(http.HandlerFunc(h.CreatePost))))
+	r.Handle("/api/create-comment", wrap(mw.AuthMiddleware(http.HandlerFunc(h.CreateComment))))
+
 	r.Handle("/api/get-users", wrap(mw.AuthMiddleware(http.HandlerFunc(h.GetUsers))))
 	r.Handle("/api/messages/{id}", wrap(mw.AuthMiddleware(http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {

@@ -24,7 +24,7 @@ export function initWebSocket() {
     };
 
     socket.onclose = () => {
-        console.log('WebSocket connection closed. Attempting to reconnect...');
+        showAlert('WebSocket connection closed, please log in again', 'error');
         renderPage('/login');
     };
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"real-time-forum/backend/database"
 	"real-time-forum/backend/utils"
+	"strconv"
 	"strings"
 	"time"
 
@@ -352,6 +353,219 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	// broadcast message to other user
 	h.wsHub.broadcast <- []byte(`{"type": "message", "content": "` + message.SenderID.String() + `,` + message.ReceiverID.String() + `"}`)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
+/* -------------------- Posts&Comments -------------------- */
+
+// GetPosts gets all posts
+func (h *Handler) GetPosts(w http.ResponseWriter, r *http.Request) {
+	var posts []database.Post
+
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
+	query := `
+        SELECT p.id, p.user_id, p.title, p.content, p.category, p.created_at, u.username
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        ORDER BY p.created_at DESC
+        LIMIT ? OFFSET ?
+    `
+	rows, err := h.db.DB.Query(query, limit, offset)
+	if err != nil {
+		log.Printf("Failed to fetch posts: %v", err)
+		http.Error(w, "Failed to fetch posts", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var post database.Post
+		if err := rows.Scan(&post.ID, &post.UserID, &post.Title, &post.Content, &post.Category, &post.CreatedAt); err != nil {
+			log.Printf("Failed to scan post: %v", err)
+			http.Error(w, "Failed to scan post", http.StatusInternalServerError)
+			return
+		}
+		posts = append(posts, post)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("Failed to iterate over posts: %v", err)
+		http.Error(w, "Failed to iterate over posts", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if len(posts) == 0 {
+		posts = []database.Post{}
+	}
+	if err := json.NewEncoder(w).Encode(posts); err != nil {
+		log.Println("Error encoding posts:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+	}
+}
+
+// CreatePost creates a new post
+func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
+    userID, err := utils.GetUserID(h.db, r.Header.Get("Authorization"))
+    if err != nil {
+        log.Println("Error getting user ID:", err)
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
+
+    var post database.Post
+    if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
+        log.Println("Error decoding post:", err)
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
+
+    err = utils.ValidatePost(post)
+    if err != nil {
+        log.Println("Error validating post:", err)
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
+
+    post.UserID, err = uuid.FromString(userID)
+    if err != nil {
+        log.Println("Error parsing user ID:", err)
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
+
+    query := `INSERT INTO posts (user_id, title, content, category, created_at) VALUES (?, ?, ?, ?, ?)`
+    _, err = h.db.DB.Exec(query, post.UserID, post.Title, post.Content, post.Category, time.Now())
+    if err != nil {
+        log.Println("Error inserting post:", err)
+        http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+}
+
+// GetComments gets all comments for a post
+func (h *Handler) GetComments(w http.ResponseWriter, r *http.Request) {
+    postIDStr := r.URL.Query().Get("post_id")
+    limitStr := r.URL.Query().Get("limit")
+    offsetStr := r.URL.Query().Get("offset")
+
+    postID, err := strconv.Atoi(postIDStr)
+    if err != nil || postID <= 0 {
+        http.Error(w, `{"message": "Invalid post ID"}`, http.StatusBadRequest)
+        return
+    }
+
+    limit, err := strconv.Atoi(limitStr)
+    if err != nil || limit <= 0 {
+        limit = 10 // Default limit
+    }
+    offset, err := strconv.Atoi(offsetStr)
+    if err != nil || offset < 0 {
+        offset = 0 // Default offset
+    }
+
+    var comments []database.Comment
+
+    query := `
+        SELECT c.id, c.post_id, c.user_id, c.content, c.created_at, u.username
+        FROM comments c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.post_id = ?
+        ORDER BY c.created_at DESC
+        LIMIT ? OFFSET ?
+    `
+    rows, err := h.db.DB.Query(query, postID, limit, offset)
+    if err != nil {
+        log.Printf("Failed to fetch comments: %v", err)
+        http.Error(w, "Failed to fetch comments", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    for rows.Next() {
+        var comment database.Comment
+        if err := rows.Scan(&comment.ID, &comment.PostID, &comment.UserID, &comment.Content, &comment.CreatedAt); err != nil {
+            log.Printf("Failed to scan comment: %v", err)
+            http.Error(w, "Failed to scan comment", http.StatusInternalServerError)
+            return
+        }
+        comments = append(comments, comment)
+    }
+
+    if err := rows.Err(); err != nil {
+        log.Printf("Failed to iterate over comments: %v", err)
+        http.Error(w, "Failed to iterate over comments", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    if len(comments) == 0 {
+		comments = []database.Comment{}
+	}
+	if err := json.NewEncoder(w).Encode(comments); err != nil {
+		log.Println("Error encoding comments:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+	}
+}
+
+// CreateComment creates a new comment
+func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
+	userID, err := utils.GetUserID(h.db, r.Header.Get("Authorization"))
+	if err != nil {
+		log.Println("Error getting user ID:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	var comment database.Comment
+	if err := json.NewDecoder(r.Body).Decode(&comment); err != nil {
+		log.Println("Error decoding comment:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	if comment.Content == "" || strings.TrimSpace(comment.Content) == "" {
+		http.Error(w, `{"message": "Comment content is required"}`, http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		log.Println("Error validating comment:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	comment.UserID, err = uuid.FromString(userID)
+	if err != nil {
+		log.Println("Error parsing user ID:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	query := `INSERT INTO comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, ?)`
+	_, err = h.db.DB.Exec(query, comment.PostID, comment.UserID, comment.Content, time.Now())
+	if err != nil {
+		log.Println("Error inserting comment:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

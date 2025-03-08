@@ -39,9 +39,22 @@ func ValidateUser(user database.User) error {
 	if user.Gender != "male" && user.Gender != "female" && user.Gender != "other" {
 		return errors.New("Gender must be 'male', 'female', or 'other'")
 	}
+	if len(user.Username) > 100 || len(user.Password) > 100 {
+		return errors.New("Username and Password must be less than 100 characters")
+	}
 	return nil
 }
 
 func CheckPassword(password string, hashedPassword string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+}
+
+func ValidatePost(post database.Post) error {
+	if post.Title == "" || post.Content == ""{
+		return errors.New("All fields are required")
+	}
+	if len(post.Title) > 100 || len(post.Content) > 1000 || len(post.Category) > 100 {
+		return errors.New("Title and Category must be less than 100 characters and content must be less than 1000 characters")
+	}
+	return nil
 }
