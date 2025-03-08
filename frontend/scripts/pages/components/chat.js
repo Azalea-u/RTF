@@ -36,7 +36,7 @@ export default async function Chat(userId, username) {
     container.innerHTML = `
         <div class="chat-header">
             <button id="exit-chat">Exit</button>
-            <h2>Chatting with ${username}</h2>
+            <h2>Chatting with <span class="chat-username">${username}</span></h2>
         </div>
         <div class="messages">
             ${Array.isArray(messages) && messages.length > 0 ? 

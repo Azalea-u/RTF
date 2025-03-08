@@ -50,22 +50,8 @@ export default async function UserList() {
 
     return container;
 }
-// Reload the user list only for the specified user IDs
-export function reloadUserList(userIds = []) {
-    const userElements = document.querySelectorAll('.user');
-    const currentUser = localStorage.getItem('userId');
-    if (userIds.length === 0) {
-        updateUserList();
-        return;
-    }
-    userIds.forEach(userId => {
-        if (userId !== currentUser) {
-            updateUserList();
-        }
-    })
-}
 
-function updateUserList() {
+export function updateUserList() {
     fetch ('/api/get-users')
         .then(response => response.json())
         .then(data => {
@@ -94,4 +80,9 @@ function updateUserList() {
             console.error('Fetch users error:', error);
             renderPage('/login');
         });
+}
+
+export function getUser(userId) {
+    const user = users.find(user => user.id === userId);
+    return user ? user.username : 'Unknown User';
 }

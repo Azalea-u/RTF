@@ -107,7 +107,7 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, db *databa
 			break
 		}
 		go func() {
-			h.broadcast <- []byte(`{"type": "chat", "content": "` + string(message) + `"}`)
+			h.broadcast <- []byte(`{"type": "message", "content": "` + string(message) + `"}`)
 		}()
 	}
 }

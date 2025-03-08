@@ -237,7 +237,7 @@ func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
-// GetMessages returns the messages between two users 10 at a time
+// GetMessages returns all messages between two users
 func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	token, err := utils.GetCookie(r, "session_token")
 	if err != nil {
@@ -264,7 +264,6 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		FROM message 
 		WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) 
 		ORDER BY created_at ASC 
-		LIMIT 10
 	`
 	rows, err := h.db.DB.Query(query, userID, otherUserID, otherUserID, userID)
 	if err != nil {
@@ -350,6 +349,9 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
+
+	// broadcast message to other user
+	h.wsHub.broadcast <- []byte(`{"type": "message", "content": "` + message.SenderID.String() + `,` + message.ReceiverID.String() + `"}`)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
