@@ -4,13 +4,15 @@ import { showAlert } from "../utils.js";
 export default function register() {
     const container = document.createElement('div');
     container.innerHTML = `
-        <h1>Login</h1>
-        <form id="login-form">
-            <input type="text" id="username-or-email" name="email_or_username" placeholder="Username or Email" required>
-            <input type="password" id="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-            <p>Don't have an account? <a href="#" id="register-link">Register</a></p>
-        </form>
+    <div class="login-container">
+    <h2>Login</h2>
+    <form id="login-form">
+        <input type="text" id="username-or-email" name="email_or_username" placeholder="Username or Email" required>
+        <input type="password" id="password" name="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+        <p>Don't have an account? <a href="#" id="register-link">Register</a></p>
+    </form>
+    </div>
     `;
 
     container.querySelector('#login-form').addEventListener('submit', async (e) => {

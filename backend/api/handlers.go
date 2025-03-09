@@ -377,10 +377,9 @@ func (h *Handler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-        SELECT p.id, p.user_id, p.title, p.content, p.category, p.created_at, u.username
-        FROM post p
-        JOIN users u ON p.user_id = u.id
-        ORDER BY p.created_at DESC
+        SELECT id, user_id, title, content, category, created_at
+        FROM post
+        ORDER BY created_at DESC
         LIMIT ? OFFSET ?
     `
 	rows, err := h.db.DB.Query(query, limit, offset)
