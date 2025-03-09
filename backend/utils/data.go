@@ -50,7 +50,7 @@ func CheckPassword(password string, hashedPassword string) error {
 }
 
 func ValidatePost(post database.Post) error {
-	if post.Title == "" || post.Content == ""{
+	if post.Title == "" || post.Content == "" || post.Category == "" {
 		return errors.New("All fields are required")
 	}
 	if len(post.Title) > 100 || len(post.Content) > 1000 || len(post.Category) > 100 {

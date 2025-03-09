@@ -378,7 +378,7 @@ func (h *Handler) GetPosts(w http.ResponseWriter, r *http.Request) {
 
 	query := `
         SELECT p.id, p.user_id, p.title, p.content, p.category, p.created_at, u.username
-        FROM posts p
+        FROM post p
         JOIN users u ON p.user_id = u.id
         ORDER BY p.created_at DESC
         LIMIT ? OFFSET ?
@@ -420,7 +420,13 @@ func (h *Handler) GetPosts(w http.ResponseWriter, r *http.Request) {
 
 // CreatePost creates a new post
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
-    userID, err := utils.GetUserID(h.db, r.Header.Get("Authorization"))
+	token, err := utils.GetCookie(r, "session_token")
+	if err != nil {
+		log.Println("Error getting session token:", err)
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+    userID, err := utils.GetUserID(h.db, token)
     if err != nil {
         log.Println("Error getting user ID:", err)
         http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
@@ -448,7 +454,9 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    query := `INSERT INTO posts (user_id, title, content, category, created_at) VALUES (?, ?, ?, ?, ?)`
+	log.Println("Post:", post)
+
+    query := `INSERT INTO post (user_id, title, content, category, created_at) VALUES (?, ?, ?, ?, ?)`
     _, err = h.db.DB.Exec(query, post.UserID, post.Title, post.Content, post.Category, time.Now())
     if err != nil {
         log.Println("Error inserting post:", err)
@@ -541,14 +549,9 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
-
+	
 	if comment.Content == "" || strings.TrimSpace(comment.Content) == "" {
 		http.Error(w, `{"message": "Comment content is required"}`, http.StatusBadRequest)
-		return
-	}
-	if err != nil {
-		log.Println("Error validating comment:", err)
-		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 

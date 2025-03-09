@@ -115,25 +115,33 @@ export default async function Posts() {
         <div id="post-list" class="post-list"></div>
     `;
 
-    const postForm = container.querySelector('#post-form');
-    postForm.addEventListener('submit', async (e) => {
+    container.querySelector('#post-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = new FormData(postForm);
-        formData.append('user_id', localStorage.getItem('userId'));
-
-        try {
-            const response = await fetch('/api/create-post', {
-                method: 'POST',
-                body: formData,
-                credentials: 'include',
-            });
-            if (!response.ok) throw new Error('Failed to create post');
-
-            postForm.reset();
-            postOffset = 0;
-            loadPosts();
-        } catch (error) {
-            console.error('Error creating post:', error);
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+    
+        if (!data.title || !data.content || !data.categories) {
+            console.error('All fields must be filled out');
+            showAlert('All fields must be filled out', 'error');
+            return;
+        }
+    
+        const response = await fetch('/api/create-post', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+    
+        if (response.ok) {
+            console.log('Post created successfully');
+            showAlert('Post created successfully', 'success');
+            e.target.reset();
+            await loadPosts();
+        } else {
+            const error = await response.json();
+            showAlert(error.message || 'Failed to create post', 'error');
         }
     });
 
