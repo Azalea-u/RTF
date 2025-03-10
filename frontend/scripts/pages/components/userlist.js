@@ -79,10 +79,11 @@ export function updateUserList() {
         .catch(error => {
             console.error('Fetch users error:', error);
             renderPage('/login');
+            
         });
 }
 
 export function getUser(userId) {
     const user = users.find(user => user.id === userId);
-    return user ? user.username : 'Unknown User';
+    return user?.username || (userId === localStorage.getItem('userId') ? localStorage.getItem('username') : 'Unknown User');
 }

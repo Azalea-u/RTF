@@ -6,7 +6,7 @@ export let inChat = false;
 function messageBubble(message) {
     const container = document.createElement('div');
     container.classList.add('message-bubble');
-    const currentUserId = localStorage.getItem('user_id');
+    const currentUserId = Number(localStorage.getItem('user_id'));
     container.innerHTML = `
         <div class="message ${message.sender_id === currentUserId ? 'sent' : 'received'}" sender-id="${message.sender_id}">
             <p>${message.content}</p>
@@ -39,35 +39,45 @@ export default async function Chat(userId, username) {
             <button id="exit-chat">Exit</button>
             <h2>Chatting with <span class="chat-username">${username}</span></h2>
         </div>
-        <div class="messages">
-            ${Array.isArray(messages) && messages.length > 0 ? 
-                messages.map(message => messageBubble(message)).join('') : 
-                'No messages yet for this conversation'}
-        </div>
+        <div class="messages"></div>
         <form id="message-form">
             <input type="text" id="message-input" placeholder="Type your message here..." required>
             <button type="submit" id="send-button">Send</button>
         </form>
     `;
-    updateChat(userId);
+
+    const messagesContainer = container.querySelector('.messages');
+
+    function scrollToBottom() {
+        setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, 100); // Small delay to ensure DOM updates before scrolling
+    }
+
+    if (Array.isArray(messages) && messages.length > 0) {
+        messages.forEach(message => {
+            messagesContainer.appendChild(messageBubble(message));
+        });
+    } else {
+        messagesContainer.innerHTML = 'No messages yet for this conversation';
+    }
+
+    scrollToBottom(); // Scroll down after loading messages
 
     container.querySelector('#message-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const messageInput = container.querySelector('#message-input');
-        const message = messageInput.value;
+        const message = messageInput.value.trim();
 
-        if (!message || message.trim() === '') {
+        if (!message) {
             console.error('Message is empty');
             showAlert('Please enter a message', 'error');
             return;
         }
-        
 
         const sendResponse = await fetch(`/api/messages/${userId}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ content: message }),
         });
@@ -79,7 +89,8 @@ export default async function Chat(userId, username) {
         }
 
         messageInput.value = '';
-        updateChat(userId); // Fetch updated messages for the current chat
+
+        updateChat(userId);
     });
 
     container.querySelector('#exit-chat').addEventListener('click', () => {
@@ -95,14 +106,20 @@ export function updateChat(userId) {
         .then(response => response.json())
         .then(messages => {
             const messagesContainer = document.querySelector('.messages');
+            if (!messagesContainer) return;
+
             messagesContainer.innerHTML = '';
+
             if (messages.length === 0) {
                 messagesContainer.innerHTML = 'No messages yet for this conversation';
                 return;
             }
+
             messages.forEach(message => {
                 messagesContainer.appendChild(messageBubble(message));
             });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom after update
         })
         .catch(error => {
             console.error('Error fetching updated messages:', error);

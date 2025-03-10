@@ -469,62 +469,61 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 // GetComments gets all comments for a post
 func (h *Handler) GetComments(w http.ResponseWriter, r *http.Request) {
-    postIDStr := r.URL.Query().Get("post_id")
-    limitStr := r.URL.Query().Get("limit")
-    offsetStr := r.URL.Query().Get("offset")
+	postIDStr := r.URL.Query().Get("post_id")
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
 
-    postID, err := strconv.Atoi(postIDStr)
-    if err != nil || postID <= 0 {
-        http.Error(w, `{"message": "Invalid post ID"}`, http.StatusBadRequest)
-        return
-    }
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil || postID <= 0 {
+		http.Error(w, `{"message": "Invalid post ID"}`, http.StatusBadRequest)
+		return
+	}
 
-    limit, err := strconv.Atoi(limitStr)
-    if err != nil || limit <= 0 {
-        limit = 10 // Default limit
-    }
-    offset, err := strconv.Atoi(offsetStr)
-    if err != nil || offset < 0 {
-        offset = 0 // Default offset
-    }
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10 // Default limit
+	}
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0 // Default offset
+	}
 
-    var comments []database.Comment
+	var comments []database.Comment
 
-    query := `
-        SELECT c.id, c.post_id, c.user_id, c.content, c.created_at, u.username
-        FROM comments c
-        JOIN users u ON c.user_id = u.id
-        WHERE c.post_id = ?
-        ORDER BY c.created_at DESC
+	query := `
+        SELECT id, content, user_id, post_id, created_at
+        FROM comment
+        WHERE post_id = ?
+        ORDER BY created_at DESC
         LIMIT ? OFFSET ?
     `
-    rows, err := h.db.DB.Query(query, postID, limit, offset)
-    if err != nil {
-        log.Printf("Failed to fetch comments: %v", err)
-        http.Error(w, "Failed to fetch comments", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+	rows, err := h.db.DB.Query(query, postID, limit, offset)
+	if err != nil {
+		log.Printf("Failed to fetch comments: %v", err)
+		http.Error(w, "Failed to fetch comments", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    for rows.Next() {
-        var comment database.Comment
-        if err := rows.Scan(&comment.ID, &comment.PostID, &comment.UserID, &comment.Content, &comment.CreatedAt); err != nil {
-            log.Printf("Failed to scan comment: %v", err)
-            http.Error(w, "Failed to scan comment", http.StatusInternalServerError)
-            return
-        }
-        comments = append(comments, comment)
-    }
+	for rows.Next() {
+		var comment database.Comment
+		if err := rows.Scan(&comment.ID, &comment.Content, &comment.UserID, &comment.PostID, &comment.CreatedAt); err != nil {
+			log.Printf("Failed to scan comment: %v", err)
+			http.Error(w, "Failed to scan comment", http.StatusInternalServerError)
+			return
+		}
+		comments = append(comments, comment)
+	}
 
-    if err := rows.Err(); err != nil {
-        log.Printf("Failed to iterate over comments: %v", err)
-        http.Error(w, "Failed to iterate over comments", http.StatusInternalServerError)
-        return
-    }
+	if err := rows.Err(); err != nil {
+		log.Printf("Failed to iterate over comments: %v", err)
+		http.Error(w, "Failed to iterate over comments", http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    if len(comments) == 0 {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if len(comments) == 0 {
 		comments = []database.Comment{}
 	}
 	if err := json.NewEncoder(w).Encode(comments); err != nil {
@@ -535,10 +534,16 @@ func (h *Handler) GetComments(w http.ResponseWriter, r *http.Request) {
 
 // CreateComment creates a new comment
 func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.GetUserID(h.db, r.Header.Get("Authorization"))
+	token, err := utils.GetCookie(r, "session_token")
+	if err != nil {
+		log.Println("Error getting session token:", err)
+		http.Error(w, "Error getting session token", http.StatusInternalServerError)
+		return
+	}
+	userID, err := utils.GetUserID(h.db, token)
 	if err != nil {
 		log.Println("Error getting user ID:", err)
-		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		http.Error(w, "Error getting user ID", http.StatusInternalServerError)
 		return
 	}
 
@@ -561,7 +566,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `INSERT INTO comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, ?)`
+	query := `INSERT INTO comment (post_id, user_id, content, created_at) VALUES (?, ?, ?, ?)`
 	_, err = h.db.DB.Exec(query, comment.PostID, comment.UserID, comment.Content, time.Now())
 	if err != nil {
 		log.Println("Error inserting comment:", err)
