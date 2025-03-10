@@ -6,8 +6,9 @@ export let inChat = false;
 function messageBubble(message) {
     const container = document.createElement('div');
     container.classList.add('message-bubble');
+    const currentUserId = localStorage.getItem('user_id');
     container.innerHTML = `
-        <div class="message" sender-id="${message.sender_id}">
+        <div class="message ${message.sender_id === currentUserId ? 'sent' : 'received'}" sender-id="${message.sender_id}">
             <p>${message.content}</p>
             <span class="timestamp">${TimeAgo(message.created_at)}</span>
         </div>
@@ -45,7 +46,7 @@ export default async function Chat(userId, username) {
         </div>
         <form id="message-form">
             <input type="text" id="message-input" placeholder="Type your message here..." required>
-            <button type="submit">Send</button>
+            <button type="submit" id="send-button">Send</button>
         </form>
     `;
     updateChat(userId);
