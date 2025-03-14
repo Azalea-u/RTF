@@ -260,13 +260,25 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 10
+	}
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		offset = 0
+	}
+
 	query := `
 		SELECT sender_id, receiver_id, content, created_at 
 		FROM message 
 		WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) 
-		ORDER BY created_at ASC 
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
 	`
-	rows, err := h.db.DB.Query(query, userID, otherUserID, otherUserID, userID)
+	rows, err := h.db.DB.Query(query, userID, otherUserID, otherUserID, userID, limit, offset)
 	if err != nil {
 		log.Println("Error querying messages:", err)
 		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
