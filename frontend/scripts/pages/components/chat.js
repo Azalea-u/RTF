@@ -20,7 +20,13 @@ export default async function Chat(userId, username) {
     const container = document.createElement('div');
     container.id = 'chat';
 
-    const response = await fetch(`/api/messages/${userId}`, {
+    // Pagination state
+    let offset = 0;
+    let hasMore = true;
+    let isLoading = false;
+
+    // Initial messages load
+    const response = await fetch(`/api/messages/${userId}?limit=10&offset=0`, {
         method: 'GET',
         credentials: 'include',
     });
@@ -32,6 +38,7 @@ export default async function Chat(userId, username) {
     }
 
     const messages = await response.json();
+    hasMore = messages.length === 10;
     inChat = true;
 
     container.innerHTML = `
@@ -48,49 +55,98 @@ export default async function Chat(userId, username) {
 
     const messagesContainer = container.querySelector('.messages');
 
+    messagesContainer.addEventListener('scroll', async () => {
+        if (isLoading || !hasMore) return;
+        
+        // Load more when 80px from top
+        if (messagesContainer.scrollTop < 80) {
+            isLoading = true;
+            const newOffset = offset + 10;
+            
+            try {
+                const response = await fetch(`/api/messages/${userId}?limit=10&offset=${newOffset}`, {
+                    credentials: 'include',
+                });
+                
+                if (!response.ok) throw new Error('Failed to load messages');
+                
+                const newMessages = await response.json();
+                hasMore = newMessages.length === 10;
+                
+                if (newMessages.length > 0) {
+                    const oldHeight = messagesContainer.scrollHeight;
+                    const fragment = document.createDocumentFragment();
+                    
+                    newMessages.reverse().forEach(message => {
+                        fragment.appendChild(messageBubble(message));
+                    });
+                    
+                    messagesContainer.prepend(fragment);
+                    offset = newOffset;
+                    
+                    // Maintain scroll position
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight - oldHeight;
+                }
+            } catch (error) {
+                console.error('Error loading more messages:', error);
+                showAlert('Failed to load older messages', 'error');
+            } finally {
+                isLoading = false;
+            }
+        }
+    });
+
     function scrollToBottom() {
         setTimeout(() => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }, 100); // Small delay to ensure DOM updates before scrolling
+        }, 100);
     }
 
-    if (Array.isArray(messages) && messages.length > 0) {
-        messages.forEach(message => {
+    // Initial messages rendering
+    if (messages.length > 0) {
+        messages.reverse().forEach(message => {
             messagesContainer.appendChild(messageBubble(message));
         });
     } else {
         messagesContainer.innerHTML = 'No messages yet for this conversation';
     }
 
-    scrollToBottom(); // Scroll down after loading messages
+    scrollToBottom();
 
+    // Message submission handler
     container.querySelector('#message-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const messageInput = container.querySelector('#message-input');
         const message = messageInput.value.trim();
 
         if (!message) {
-            console.error('Message is empty');
             showAlert('Please enter a message', 'error');
             return;
         }
 
-        const sendResponse = await fetch(`/api/messages/${userId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ content: message }),
-        });
+        try {
+            const sendResponse = await fetch(`/api/messages/${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ content: message }),
+            });
 
-        if (!sendResponse.ok) {
-            console.error('Failed to send message');
+            if (!sendResponse.ok) throw new Error('Failed to send message');
+            
+            // Optimistically add new message
+            const newMessage = {
+                content: message,
+                sender_id: Number(localStorage.getItem('user_id')),
+                created_at: new Date().toISOString(), // Use current time for the new message
+            };
+            messagesContainer.appendChild(messageBubble(newMessage));
+            scrollToBottom();
+            messageInput.value = '';            
+        } catch (error) {
+            console.error('Message send failed:', error);
             showAlert('Failed to send message, please try again', 'error');
-            return;
         }
-
-        messageInput.value = '';
-
-        updateChat(userId);
     });
 
     container.querySelector('#exit-chat').addEventListener('click', () => {
@@ -102,7 +158,7 @@ export default async function Chat(userId, username) {
 }
 
 export function updateChat(userId) {
-    fetch(`/api/messages/${userId}`)
+    fetch(`/api/messages/${userId}?limit=10&offset=0`)
         .then(response => response.json())
         .then(messages => {
             const messagesContainer = document.querySelector('.messages');
@@ -115,11 +171,11 @@ export function updateChat(userId) {
                 return;
             }
 
-            messages.forEach(message => {
+            messages.reverse().forEach(message => {
                 messagesContainer.appendChild(messageBubble(message));
             });
 
-            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to bottom after update
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         })
         .catch(error => {
             console.error('Error fetching updated messages:', error);
