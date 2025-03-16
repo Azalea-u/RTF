@@ -3,12 +3,14 @@ package api
 import (
 	"net/http"
 	"real-time-forum/backend/database"
+	"time"
 )
 
-func NewRouter(db *database.Database , wsHub *Hub) *http.ServeMux {
+func NewRouter(db *database.Database, wsHub *Hub) *http.ServeMux {
 	r := http.NewServeMux()
 	h := Handler{db: db, wsHub: wsHub}
 	mw := Middleware{db: db}
+	th := NewThrottle(3 * time.Second)
 
 	wrap := func(h http.Handler) http.Handler {
 		return mw.LogMiddleware(mw.CorsMiddleware(h))
@@ -24,15 +26,15 @@ func NewRouter(db *database.Database , wsHub *Hub) *http.ServeMux {
 
 	r.Handle("/api/get-posts", wrap(mw.AuthMiddleware(http.HandlerFunc(h.GetPosts))))
 	r.Handle("/api/get-comments", wrap(mw.AuthMiddleware(http.HandlerFunc(h.GetComments))))
-	r.Handle("/api/create-post", wrap(mw.AuthMiddleware(http.HandlerFunc(h.CreatePost))))
-	r.Handle("/api/create-comment", wrap(mw.AuthMiddleware(http.HandlerFunc(h.CreateComment))))
+	r.Handle("/api/create-post", wrap(th.Throttle(mw.AuthMiddleware(http.HandlerFunc(h.CreatePost)))))
+	r.Handle("/api/create-comment", wrap(th.Throttle(mw.AuthMiddleware(http.HandlerFunc(h.CreateComment)))))
 
 	r.Handle("/api/get-users", wrap(mw.AuthMiddleware(http.HandlerFunc(h.GetUsers))))
-	r.Handle("/api/messages/{id}", wrap(mw.AuthMiddleware(http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+	r.Handle("/api/messages/{id}", wrap(mw.AuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			h.GetMessages(w, r)
 		} else if r.Method == "POST" {
-			h.SendMessage(w, r)
+			th.Throttle(http.HandlerFunc(h.SendMessage)).ServeHTTP(w, r)
 		}
 	}))))
 

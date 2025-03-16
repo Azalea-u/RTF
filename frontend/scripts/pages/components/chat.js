@@ -6,9 +6,8 @@ export let inChat = false;
 function messageBubble(message) {
     const container = document.createElement('div');
     container.classList.add('message-bubble');
-    const currentUserId = Number(localStorage.getItem('user_id'));
     container.innerHTML = `
-        <div class="message ${message.sender_id === currentUserId ? 'sent' : 'received'}" sender-id="${message.sender_id}">
+        <div class="message" sender-id="${message.sender_id}">
             <p>${message.content}</p>
             <span class="timestamp">${TimeAgo(message.created_at)}</span>
         </div>
@@ -142,7 +141,10 @@ export default async function Chat(userId, username) {
             };
             messagesContainer.appendChild(messageBubble(newMessage));
             scrollToBottom();
-            messageInput.value = '';            
+            messageInput.value = '';
+            updateChat(userId);
+            hasMore = true;
+            offset = 0;
         } catch (error) {
             console.error('Message send failed:', error);
             showAlert('Failed to send message, please try again', 'error');

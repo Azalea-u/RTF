@@ -386,23 +386,6 @@ aside h2 {
 }
 
 .message {
-    margin-bottom: 10px;
-}
-
-.sent {
-    background-color: #FFEBE6;
-    border: 2.5px solid #FF5733;
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 10px;
-    width: fit-content;
-    max-width: 80%;
-    word-wrap: break-word;
-    justify-self: flex-end;
-    align-self: flex-end;
-}
-
-.received {
     background-color: #FFEBE6;
     border: 2.5px solid #FF5733;
     border-radius: 8px;
