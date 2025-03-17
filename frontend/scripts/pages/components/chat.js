@@ -2,6 +2,7 @@ import { renderPage } from '../../router.js';
 import { showAlert, TimeAgo } from '../../utils.js';
 
 export let inChat = false;
+export let chatingWith = null;
 
 function messageBubble(message) {
     const container = document.createElement('div');
@@ -39,6 +40,7 @@ export default async function Chat(userId, username) {
     const messages = await response.json();
     hasMore = messages.length === 10;
     inChat = true;
+    chatingWith = userId;
 
     container.innerHTML = `
         <div class="chat-header">

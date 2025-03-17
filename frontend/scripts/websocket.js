@@ -1,5 +1,5 @@
 import { showAlert } from "./utils.js";
-import { inChat, updateChat } from "./pages/components/chat.js";
+import { inChat, chatingWith, updateChat } from "./pages/components/chat.js";
 import { getUser, updateUserList } from "./pages/components/userlist.js";
 import { renderPage } from "./router.js";
 
@@ -54,7 +54,7 @@ function handleChatMessage(message) {
 
     if (receiver_id === currentUserId) {
         showAlert(`New message from ${getUser(sender_id)}`, 'success');
-        if (inChat) {
+        if (inChat && chatingWith === sender_id) {
             updateChat(receiver_id);
             updateChat(sender_id);
         }
