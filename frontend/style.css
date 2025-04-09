@@ -470,6 +470,9 @@ aside h2 {
 
 .comment-username {
     font-weight: bold;
+    text-align: left;
+    margin-bottom: 5px;
+    color: #FF5733;
 }
 
 .comment-content {

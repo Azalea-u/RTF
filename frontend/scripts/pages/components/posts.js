@@ -31,16 +31,19 @@ function createPostCard(post) {
 
     commentButton.addEventListener("click", () => {
         const commentsDropdown = container.querySelector(".comments-dropdown");
-        if (commentsDropdown.innerHTML === "") {
-            loadComments(post.id, commentsDropdown, loadMoreButton, commentForm);
-        } else {
+        const isVisible = commentsDropdown.innerHTML !== "";
+
+        if (isVisible) {
             commentsDropdown.innerHTML = "";
             loadMoreButton.style.display = "none";
             commentForm.style.display = "none";
+            commentButton.style.display = "inline-block";
+        } else {
+            loadComments(post.id, commentsDropdown, loadMoreButton, commentForm);
+            commentButton.style.display = "none";
         }
     });
 
-    // Updated comment submission: reset offset and clear dropdown before reloading comments.
     commentForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const content = commentForm.querySelector('input[name="content"]').value;
@@ -50,7 +53,6 @@ function createPostCard(post) {
             try {
                 await postComment(post.id, content);
                 commentForm.reset();
-                // Reset the comments offset and clear the comments container
                 commentOffsets[post.id] = 0;
                 commentsDropdown.innerHTML = "";
                 loadComments(post.id, commentsDropdown, loadMoreButton, commentForm);

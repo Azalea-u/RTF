@@ -18,16 +18,16 @@ var upgrader = websocket.Upgrader{
 type Client struct {
 	conn *websocket.Conn
 	id   string
+	send chan []byte
 }
 
 type Hub struct {
-	clients    map[*Client]bool // Registered clients connected to the hub.
+	clients    map[*Client]bool
 	broadcast  chan []byte
 	register   chan *Client
 	unregister chan *Client
 }
 
-// NewHub initializes a new Hub instance.
 func NewHub() *Hub {
 	return &Hub{
 		broadcast:  make(chan []byte),
@@ -37,40 +37,38 @@ func NewHub() *Hub {
 	}
 }
 
-// StartHub starts the hub to manage WebSocket connections.
 func (h *Hub) StartHub() {
 	for {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
 			log.Println("Client registered:", client.id)
-			go func ()  {
-				h.broadcast <- []byte(`{"type": "user_connected"}`)
-			}()
+			h.broadcast <- []byte(`{"type": "user_connected"}`)
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
+				close(client.send)
 				_ = client.conn.Close()
 				log.Println("Client unregistered:", client.id)
-				go func ()  {
-					h.broadcast <- []byte(`{"type": "user_disconnected"}`)
-				}()
+				h.broadcast <- []byte(`{"type": "user_disconnected"}`)
 			}
 
 		case message := <-h.broadcast:
 			for client := range h.clients {
-				if err := client.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-					log.Println("Error sending message to client:", client.id, err)
+				select {
+				case client.send <- message:
+				default:
+					close(client.send)
+					delete(h.clients, client)
 					_ = client.conn.Close()
-					h.unregister <- client
+					log.Println("Client forcefully disconnected due to blocked send channel:", client.id)
 				}
 			}
 		}
 	}
 }
 
-// HandleWebSocket handles WebSocket connections.
 func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, db *database.Database) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -78,7 +76,6 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, db *databa
 		http.Error(w, "Error upgrading to WebSocket", http.StatusInternalServerError)
 		return
 	}
-	defer ws.Close()
 
 	token, err := utils.GetCookie(r, "session_token")
 	if err != nil {
@@ -94,8 +91,14 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, db *databa
 		return
 	}
 
-	client := &Client{conn: ws, id: userID}
+	client := &Client{
+		conn: ws,
+		id:   userID,
+		send: make(chan []byte, 256),
+	}
+
 	h.register <- client
+	go client.writePump()
 	defer func() {
 		h.unregister <- client
 	}()
@@ -106,10 +109,18 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, db *databa
 			log.Println("Error reading message:", err)
 			break
 		}
-		go func() {
-			h.broadcast <- []byte(`{"type": "message", "content": "` + string(message) + `"}`)
-		}()
+		h.broadcast <- []byte(`{"type": "message", "content": "` + string(message) + `"}`)
 	}
+}
+
+func (c *Client) writePump() {
+	for msg := range c.send {
+		if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			log.Println("WebSocket write error for client:", c.id, err)
+			break
+		}
+	}
+	c.conn.Close()
 }
 
 func (h *Hub) Shutdown() {
@@ -125,9 +136,7 @@ func (h *Hub) logout(userID string) {
 		if client.id == userID {
 			_ = client.conn.Close()
 			h.unregister <- client
-			go func() {
-				h.broadcast <- []byte(`{"type": "user_disconnected"}`)
-			}()
+			h.broadcast <- []byte(`{"type": "user_disconnected"}`)
 		}
 	}
 }
@@ -135,9 +144,7 @@ func (h *Hub) logout(userID string) {
 func (h *Hub) login(userID string) {
 	for client := range h.clients {
 		if client.id == userID {
-			go func() {
-				h.broadcast <- []byte(`{"type": "user_connected"}`)
-			}()
+			h.broadcast <- []byte(`{"type": "user_connected"}`)
 		}
 	}
 }
